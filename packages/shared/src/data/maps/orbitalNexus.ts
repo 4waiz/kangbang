@@ -233,8 +233,10 @@ export function buildOrbitalNexus(): MapDef {
     [6, 6, 3.2, 1.1, 0],
     [-6, 6, 1.1, 3.2, 0],
     [6, -6, 1.1, 3.2, 0],
-    [0, -30, 5, 1.2, 0],
-    [0, 30, 5, 1.2, 0],
+    // Offset from the spawn-wing doorways: cover directly in a door mouth traps
+    // everyone who spawns behind it.
+    [-7.5, -30, 4, 1.2, 0],
+    [7.5, 30, 4, 1.2, 0],
   ] as const) {
     b.cover(x, z, w, d, 0, 1.15, 'hull', ry);
   }

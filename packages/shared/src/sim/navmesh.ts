@@ -220,20 +220,16 @@ function finaliseCover(graph: NavGraph, world: CollisionWorld): void {
 }
 
 /**
- * Keep only nodes reachable from at least one spawn point, then re-index.
- * Links are followed in both directions during the flood so a one-way drop
- * still counts the landing area as reachable.
+ * Keep only nodes a player could actually walk to from a spawn, then re-index.
+ *
+ * The flood follows links FORWARD only. That deliberately discards room
+ * ceilings, spire caps, parapet tops and crate tops that are too tall to jump
+ * onto: they are valid standing surfaces, but a bot that paths onto one gets
+ * stuck there, so they must not be in the graph at all.
  */
 function pruneToReachable(graph: NavGraph, seeds: readonly [number, number, number][]): NavGraph {
   const n = graph.nodes.length;
   if (n === 0) return graph;
-
-  // Reverse adjacency so drops do not orphan the ground below a ledge.
-  const incoming: number[][] = new Array(n);
-  for (let i = 0; i < n; i++) incoming[i] = [];
-  for (const node of graph.nodes) {
-    for (const l of node.links) incoming[l.to].push(node.id);
-  }
 
   const reachable = new Uint8Array(n);
   const stack: number[] = [];
@@ -250,12 +246,6 @@ function pruneToReachable(graph: NavGraph, seeds: readonly [number, number, numb
       if (!reachable[l.to]) {
         reachable[l.to] = 1;
         stack.push(l.to);
-      }
-    }
-    for (const from of incoming[cur]) {
-      if (!reachable[from]) {
-        reachable[from] = 1;
-        stack.push(from);
       }
     }
   }

@@ -15,9 +15,15 @@ import { MapBuilder } from '../mapkit.js';
 import type { MapDef } from '../../sim/world.js';
 
 const HALF = 36;
-const WALL_H = 15;
-const MEZZ = 5.5;
-const GANTRY = 10;
+const WALL_H = 17;
+/**
+ * The mezzanine ring passes over the spawn bays and the two side rooms, so it
+ * has to clear their roofs (bays are 6m tall with a 0.6m slab). At 5.5 the
+ * catwalk ran *inside* the bay with half a metre of headroom.
+ */
+const MEZZ = 7.2;
+const GANTRY = 11.6;
+const CRANE = GANTRY + 2.6;
 
 export function buildNeonFoundry(): MapDef {
   const b = new MapBuilder(
@@ -164,10 +170,10 @@ export function buildNeonFoundry(): MapDef {
     b.ramp(27, sz * 14, 7, 3.4, MEZZ, GANTRY - MEZZ, '-x', 'grate');
   }
   // Crane walkway across the centre; its approach ramps sit outside the span.
-  b.catwalk(0, -10, 0, 10, GANTRY + 2.6, 2.6, 'grate', false);
+  b.catwalk(0, -10, 0, 10, CRANE, 2.6, 'grate', false);
   b.ramp(0, -12, 2.6, 4, GANTRY, 2.6, '+z', 'grate');
   b.ramp(0, 12, 2.6, 4, GANTRY, 2.6, '-z', 'grate');
-  b.prop('prop_crane', 0, GANTRY + 2.6, 0, 0, 1);
+  b.prop('prop_crane', 0, CRANE, 0, 0, 1);
 
   // ------------------------------------------------------------ spawn bays
   for (const [sz, team] of [
@@ -205,11 +211,11 @@ export function buildNeonFoundry(): MapDef {
     [30, MEZZ, 0],
     [0, MEZZ, -30],
     [0, MEZZ, 30],
-    [-16, 0, -24],
-    [16, 0, 24],
-    // Offset clear of the mezzanine access wedges at x = +-16.
-    [-20, 0, 24],
-    [20, 0, -24],
+    // Corner pockets, clear of all four mezzanine access wedges.
+    [-26, 0, -26],
+    [26, 0, 26],
+    [-26, 0, 26],
+    [26, 0, -26],
   ] as const) {
     b.spawnLookingAt(x, y, z, 0, 0, 0);
   }
@@ -269,7 +275,7 @@ export function buildNeonFoundry(): MapDef {
   b.objective({ id: 'CORE_EMBER', kind: 'core', p: [0, 0, 30], radius: 2.4, label: 'EMBER CORE', team: 2 });
 
   // -------------------------------------------------------------- pickups
-  b.weaponPickup('pk_rail', 'rail_sniper', 0, GANTRY + 2.7, 0, 32);
+  b.weaponPickup('pk_rail', 'rail_sniper', 0, CRANE, 0, 32);
   b.weaponPickup('pk_shotgun', 'ion_shotgun', -30, 0, 0, 24);
   b.weaponPickup('pk_launcher', 'arc_launcher', 30, 0, 0, 30);
   b.weaponPickup('pk_lmg', 'particle_lmg', 0, MEZZ, -30, 28);
