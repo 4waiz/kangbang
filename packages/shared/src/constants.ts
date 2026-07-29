@@ -131,7 +131,9 @@ export const HITBOX_ARM_HALF_WIDTH = 0.56;
 
 export const MAX_PLAYERS = 16;
 export const MIN_PLAYERS_TO_START = 1; // bots fill the rest
-export const WARMUP_SECONDS = 8;
+/** Free-play period before the countdown. Players spawn and can fight. */
+export const WARMUP_SECONDS = 5;
+export const COUNTDOWN_SECONDS = 3;
 export const MATCH_END_SECONDS = 14;
 export const ROOM_CODE_LENGTH = 5;
 export const MAX_NAME_LENGTH = 16;

@@ -516,9 +516,12 @@ export class Match {
     const out = movementStep(this.world, p.move, cmd, p.ctx, dt);
     p.distanceTravelled += Math.hypot(p.move.pos.x - beforeX, p.move.pos.z - beforeZ);
 
-    // Movement sanity: compare against the theoretical maximum for this class.
+    // Movement sanity: the cap is the class's theoretical maximum plus any
+    // decaying allowance from an ability impulse, times a single tolerance for
+    // float drift. Compounding two independent tolerances (as an earlier
+    // version did) produced a 1.8x ceiling that a speed hack could hide inside.
     const speed = Math.hypot(p.move.vel.x, p.move.vel.z);
-    const cap = maxTheoreticalSpeed(params) * SPEED_CHECK_TOLERANCE * config.antiCheat.moveTolerance;
+    const cap = (maxTheoreticalSpeed(params) + p.speedGrant) * SPEED_CHECK_TOLERANCE * config.antiCheat.moveTolerance;
     if (speed > cap) {
       const scale = cap / speed;
       p.move.vel.x *= scale;

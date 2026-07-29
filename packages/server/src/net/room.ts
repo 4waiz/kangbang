@@ -10,6 +10,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   CLIENT_TIMEOUT_MS,
+  COUNTDOWN_SECONDS,
   MATCH_END_SECONDS,
   MAX_CHAT_LENGTH,
   MAX_NAME_LENGTH,
@@ -262,7 +263,10 @@ export class Room {
     this.lastActivityMs = Date.now();
 
     this.sendWelcome(conn, entityId);
-    if (this.match.phase === MatchPhase.Live || this.match.phase === MatchPhase.Overtime) {
+    // Spawn immediately unless the match is on the results screen: warmup is
+    // meant to be playable, and a player staring at a dead camera for eight
+    // seconds after clicking Play is not an acceptable first impression.
+    if (this.match.phase !== MatchPhase.Ended) {
       this.match.spawnPlayer(player, Date.now());
     }
     this.ensureBots();
@@ -363,9 +367,7 @@ export class Room {
     p.ready = true;
     this.match.addPlayer(p);
     this.bots.set(entityId, new BotController(p, this.match.nav, this.cfg.botDifficulty, entityId * 7919 + index));
-    if (this.match.phase === MatchPhase.Live || this.match.phase === MatchPhase.Overtime) {
-      this.match.spawnPlayer(p, Date.now());
-    }
+    if (this.match.phase !== MatchPhase.Ended) this.match.spawnPlayer(p, Date.now());
     return true;
   }
 
@@ -463,7 +465,7 @@ export class Room {
         const active = m.activePlayerCount();
         if (active >= MIN_PLAYERS_TO_START && m.timeRemaining <= 0) {
           m.phase = MatchPhase.Countdown;
-          this.countdown = 5;
+          this.countdown = COUNTDOWN_SECONDS;
           this.pushNotice('MATCH STARTING');
         }
         break;
@@ -926,8 +928,11 @@ export class Room {
   }
 
   private broadcastMatchState(): void {
-    const state = this.match.matchState(Date.now());
-    this.broadcastJson({ t: Msg.MatchState, state });
+    this.broadcastJson({ t: Msg.MatchState, state: this.match.matchState(Date.now()) });
+    this.broadcastPlayerList();
+  }
+
+  private broadcastPlayerList(): void {
     this.broadcastJson({ t: Msg.PlayerList, players: this.playerStates() });
   }
 

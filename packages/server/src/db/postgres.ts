@@ -118,8 +118,11 @@ export class PostgresDatabase implements Database {
 
   async init(): Promise<void> {
     let pgModule: { Pool: new (cfg: { connectionString: string; max: number }) => PgPool };
+    // Indirect specifier: `pg` is an optional runtime dependency, so it must not
+    // be resolved at compile time or a local dev install would fail to build.
+    const specifier: string = 'pg';
     try {
-      pgModule = (await import('pg')) as unknown as typeof pgModule;
+      pgModule = (await import(specifier)) as unknown as typeof pgModule;
     } catch {
       throw new Error(
         'DB_DRIVER=postgres requires the `pg` package. Install it with: npm i pg -w @neon/server',

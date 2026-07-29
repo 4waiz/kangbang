@@ -138,6 +138,12 @@ export class ServerPlayer {
   adsProgress = 0;
   /** Trigger state last tick, so semi-auto weapons require a fresh pull. */
   lastFireHeld = false;
+  /**
+   * Temporary speed allowance (m/s) granted by an ability impulse - a dash or a
+   * launch legitimately exceeds the walking cap. It decays so the allowance
+   * cannot be banked, which is what a speed hack would need.
+   */
+  speedGrant = 0;
 
   // --- abilities ---------------------------------------------------------
   ability!: AbilityRuntime;
@@ -310,6 +316,9 @@ export class ServerPlayer {
 
   tickTimers(dt: number, nowMs: number): void {
     this.protectionTimer = Math.max(0, this.protectionTimer - dt);
+    // Ground friction bleeds a dash off in well under a second; decay the
+    // allowance a little slower so a legitimate slide-dash is never flagged.
+    this.speedGrant = Math.max(0, this.speedGrant - 9 * dt);
     if (this.equipTimer > 0) {
       this.equipTimer = Math.max(0, this.equipTimer - dt);
       if (this.equipTimer === 0 && this.pendingSlot >= 0) {
