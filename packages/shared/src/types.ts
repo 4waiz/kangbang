@@ -66,6 +66,12 @@ export interface InputCommand {
   buttons: ButtonMask;
   /** Slot the client wants to be holding (0..3). */
   slot: number;
+  /**
+   * Per-command random seed. The client generates it, predicts spread with it,
+   * and the server recomputes the identical cone so predicted tracers match the
+   * authoritative trace. It never influences damage, only direction jitter.
+   */
+  shotSeed?: number;
 }
 
 export function hasBtn(buttons: number, mask: number): boolean {
