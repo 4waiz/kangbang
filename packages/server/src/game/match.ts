@@ -1008,6 +1008,8 @@ export class Match {
         p.ctx.externalVelX = (dx / len) * speed;
         p.ctx.externalVelZ = (dz / len) * speed;
         p.ctx.externalVelY = 2.2;
+        // Tell the speed check this burst is legitimate.
+        p.speedGrant = Math.max(p.speedGrant, speed);
         break;
       }
       case 'cloak':
