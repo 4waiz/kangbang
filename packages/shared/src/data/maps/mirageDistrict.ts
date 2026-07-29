@@ -192,8 +192,8 @@ export function buildMirageDistrict(): MapDef {
     b.neon(-12, z + sz * 3.6, 12, z + sz * 3.6, 7.2, team === 1 ? 'neonCyan' : 'neonAmber', 0.2);
     b.lightPanel(0, 7.7, z, 16, 4, team === 1 ? 0x9ff0ff : 0xffc39a, 1.5, 22);
     b.prop('prop_spawn_arch', 0, 0.35, z + sz * 3.9, sz < 0 ? 180 : 0, 1);
-    b.spawnCluster(0, 0.35, z, [0, 0], team, 5, 7.5, 'base');
-    b.spawnCluster(0, 0.35, z, [0, 0], 0, 3, 6);
+    b.spawnCluster(0, 0.35, z, [0, 0], team, 5, 9, 2.2, 'base');
+    b.spawnCluster(0, 0.35, z, [0, 0], 0, 3, 6, 1.8);
   }
 
   // Neutral spawns for FFA / progression, all facing the plaza.
@@ -343,15 +343,17 @@ function buildQuadrant(b: MapBuilder, sx: 1 | -1, sz: 1 | -1): void {
   b.cover(midCx, bz + sz * 5.5, 3, 1.2, 6, 1.15, 'hull');
 
   // --- roof at y=12 with a stairwell opening over the mid floor ------------
-  // Three slabs leave a 5x5 hole so the mid-floor ramp can surface.
+  // Three slabs leave a 5 x 7 hole. Seven metres of run for the last six metres
+  // of climb keeps the wedge at 41 degrees - a 5m hole would need 50, which is
+  // past the walkable slope limit and would strand anyone using it.
   const holeX0 = bx + sx * 4;
-  const holeZ0 = bz + sz * 2.5;
+  const holeZNear = bz + sz * 0.5;
   b.floor(bx - sx * 2.5, bz, 13, d, ROOF, 'concrete', 0.5);
-  b.floor(bx + sx * 6.5, bz - sz * 2.75, 5, 10.5, ROOF, 'concrete', 0.5);
+  b.floor(bx + sx * 6.5, bz - sz * 3.75, 5, 8.5, ROOF, 'concrete', 0.5);
   b.floor(bx + sx * 6.5, bz + sz * 7.75, 5, 0.5, ROOF, 'concrete', 0.5);
-  // Ramp from the mid floor up through the opening.
-  b.ramp(holeX0 + sx * 2.5, holeZ0 + sz * 2.5, 5, 5, 6, ROOF - 6, sz > 0 ? '+z' : '-z', 'concrete');
-  b.railing(holeX0, holeZ0, holeX0, holeZ0 + sz * 5, ROOF);
+  // Wedge from the mid floor up through the opening.
+  b.ramp(bx + sx * 6.5, bz + sz * 4, 5, 7, 6, ROOF - 6, sz > 0 ? '+z' : '-z', 'concrete');
+  b.railing(holeX0, holeZNear, holeX0, bz + sz * 7.5, ROOF);
 
   // Parapet with openings where routes actually arrive:
   //   - the inward X wall takes the z = +-20 bridge
@@ -396,17 +398,20 @@ function buildQuadrant(b: MapBuilder, sx: 1 | -1, sz: 1 | -1): void {
     if (gap > 0) b.doorway(wx1, wz1, wx2, wz2, LOW_ROOF + 0.4, 0.9, 0.3, 'cityWall', gap, 0.9);
     else b.wall(wx1, wz1, wx2, wz2, LOW_ROOF + 0.4, 0.9, 0.3, 'cityWall');
   };
-  annexParapet(ax - 6.2, az - 5.2, ax + 6.2, az - 5.2, 0);
-  annexParapet(ax - 6.2, az + 5.2, ax + 6.2, az + 5.2, 0);
+  const annexOutZ = sz > 0 ? az + 5.2 : az - 5.2;
+  const annexInZ = sz > 0 ? az - 5.2 : az + 5.2;
+  annexParapet(ax - 6.2, annexInZ, ax + 6.2, annexInZ, 0);
+  annexParapet(ax - 6.2, annexOutZ, ax + 6.2, annexOutZ, 5.6);
   annexParapet(annexInX, az - 5.2, annexInX, az + 5.2, 4.4);
-  annexParapet(annexOutX, az - 5.2, annexOutX, az + 5.2, 5.4);
+  annexParapet(annexOutX, az - 5.2, annexOutX, az + 5.2, 0);
   b.boxAt(ax - sx * 6.1, LOW_ROOF * 0.55, az, 0.2, 3.4, 6, 'cityGlass', { ghost: true, noMinimap: true });
   b.prop('prop_holo_billboard', ax, LOW_ROOF + 1.4, az - sz * 5, sz > 0 ? 0 : 180, 1.5, sx > 0 ? 0xff3ec8 : 0x4fe0ff);
   b.prop('prop_ac_unit', ax + sx * 3, LOW_ROOF + 0.4, az + sz * 3, 40, 1);
 
-  // Street ramp onto the annex roof: 9m run for 7.4m of rise (39 degrees),
-  // arriving through the outward parapet gap.
-  b.ramp(annexOutX + sx * 4.5, az, 9, 5, 0, LOW_ROOF + 0.4, sx > 0 ? '-x' : '+x', 'concrete');
+  // Street ramp onto the annex roof. It runs along Z on the map-edge side:
+  // there are only ~3m between the annex and the boundary wall in X, nowhere
+  // near enough for a 9m climb.
+  b.ramp(ax, annexOutZ + sz * 4.5, 5.6, 9, 0, LOW_ROOF + 0.4, sz > 0 ? '-z' : '+z', 'concrete');
   // Annex roof -> tower roof: a catwalk out of the inward gap, then a wedge
   // that lands flush on the tower's outward parapet opening.
   const wedgeZ = bz + sz * (d / 2 + 2.5);

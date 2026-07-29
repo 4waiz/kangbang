@@ -144,14 +144,13 @@ export function buildNeonFoundry(): MapDef {
   b.ramp(-(inner - 5), 22, 10, 4.4, 0, MEZZ, '-x', 'grate');
   b.ramp(inner - 5, -22, 10, 4.4, 0, MEZZ, '+x', 'grate');
 
-  // Mezzanine cover pods.
-  for (const [x, z] of [
-    [-30, 0],
-    [30, 0],
-    [0, -30],
-    [0, 30],
-  ] as const) {
-    b.cover(x, z, x === 0 ? 4 : 1.2, x === 0 ? 1.2 : 4, MEZZ, 1.1, 'hull');
+  // Mezzanine cover pods, offset from the deck midpoints so they never sit on
+  // top of a spawn point or a weapon pickup.
+  for (const s of [-1, 1] as const) {
+    b.cover(-ring, s * 10, 1.2, 4, MEZZ, 1.1, 'hull');
+    b.cover(ring, s * 10, 1.2, 4, MEZZ, 1.1, 'hull');
+    b.cover(s * 10, -ring, 4, 1.2, MEZZ, 1.1, 'hull');
+    b.cover(s * 10, ring, 4, 1.2, MEZZ, 1.1, 'hull');
   }
 
   // -------------------------------------------------------------- gantry
@@ -188,10 +187,11 @@ export function buildNeonFoundry(): MapDef {
     b.neon(-10, z + sz * 3.4, 10, z + sz * 3.4, 5.4, team === 1 ? 'neonCyan' : 'neonAmber', 0.18);
     b.lightPanel(0, 5.8, z, 12, 4, team === 1 ? 0x9ff0ff : 0xffc39a, 1.4, 18);
     b.prop('prop_spawn_arch', 0, 0, z + sz * -4.2, sz < 0 ? 0 : 180, 1);
-    // Face the arena centre, never the back wall of the bay.
-    b.spawnCluster(0, 0, z, [0, 0], team, 5, 7, 'base');
+    // Face the arena centre, never the back wall of the bay. The bay is 8m deep
+    // so the Z spread has to stay well inside +-4.
+    b.spawnCluster(0, 0, z, [0, 0], team, 5, 7.5, 2.2, 'base');
     // FFA reuses the bays plus the neutral points below.
-    b.spawnCluster(0, 0, z, [0, 0], 0, 3, 5.5);
+    b.spawnCluster(0, 0, z, [0, 0], 0, 3, 5.5, 1.8);
   }
 
   // Neutral FFA spawn points spread around the ring and mezzanine, all facing
@@ -207,8 +207,9 @@ export function buildNeonFoundry(): MapDef {
     [0, MEZZ, 30],
     [-16, 0, -24],
     [16, 0, 24],
-    [-16, 0, 24],
-    [16, 0, -24],
+    // Offset clear of the mezzanine access wedges at x = +-16.
+    [-20, 0, 24],
+    [20, 0, -24],
   ] as const) {
     b.spawnLookingAt(x, y, z, 0, 0, 0);
   }

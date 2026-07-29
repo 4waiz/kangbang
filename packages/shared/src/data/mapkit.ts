@@ -369,6 +369,10 @@ export class MapBuilder {
   /**
    * Ring of spawns around a point, all facing a shared target.  Keeps teams
    * from stacking on one tile while guaranteeing a sensible initial view.
+   *
+   * `spreadZ` defaults to a third of `spreadX` because spawn bays are almost
+   * always wide and shallow - using one radius pushes members into the back
+   * wall, which reads in game as spawning inside the geometry.
    */
   spawnCluster(
     cx: number,
@@ -377,13 +381,14 @@ export class MapBuilder {
     target: [number, number],
     team: number,
     count: number,
-    spread = 3.2,
+    spreadX = 3.2,
+    spreadZ = spreadX / 3,
     tag?: string,
   ): void {
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + 0.35;
-      const x = cx + Math.cos(a) * spread;
-      const z = cz + Math.sin(a) * spread * 0.55;
+      const x = cx + Math.cos(a) * spreadX;
+      const z = cz + Math.sin(a) * spreadZ;
       this.spawnLookingAt(x, y, z, target[0], target[1], team, tag);
     }
   }

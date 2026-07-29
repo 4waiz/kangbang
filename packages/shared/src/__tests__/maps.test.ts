@@ -18,6 +18,9 @@ import {
   Btn,
   CollisionWorld,
   DEFAULT_MOVE_PARAMS,
+  LINK_JUMP,
+  LINK_STEP,
+  LINK_WALK,
   MAP_ORDER,
   MODE_ORDER,
   NavPathfinder,
@@ -164,13 +167,37 @@ describe('spawn placement', () => {
 
 describe('navigation graph', () => {
   for (const id of MAP_ORDER) {
-    it(`${id}: forms a single connected component`, () => {
-      const { nav } = compile(id);
+    it(`${id}: every nav node is reachable by walking from a spawn`, () => {
+      const { def, nav } = compile(id);
       const stats = navStats(nav);
       expect(stats.nodes).toBeGreaterThan(500);
-      // Pruning to the spawn-reachable set means everything left must be joined.
-      expect(stats.largestComponent).toBe(stats.nodes);
       expect(stats.isolated).toBe(0);
+
+      // Forward flood from the spawn set. One-way drop links mean the graph is
+      // not strongly connected (you cannot walk back up a 5m fall), so the
+      // property that matters is "a bot starting at a spawn can get here".
+      const seen = new Uint8Array(nav.nodes.length);
+      const stack: number[] = [];
+      for (const s of def.spawns) {
+        const start = nearestNode(nav, s.p[0], s.p[1], s.p[2]);
+        if (start >= 0 && !seen[start]) {
+          seen[start] = 1;
+          stack.push(start);
+        }
+      }
+      while (stack.length) {
+        const cur = stack.pop() as number;
+        for (const l of nav.nodes[cur].links) {
+          if (!seen[l.to]) {
+            seen[l.to] = 1;
+            stack.push(l.to);
+          }
+        }
+      }
+      const unreachable = nav.nodes.filter((n) => !seen[n.id]);
+      expect(
+        unreachable.slice(0, 6).map((n) => `(${n.x.toFixed(0)},${n.y.toFixed(1)},${n.z.toFixed(0)})`),
+      ).toEqual([]);
     });
 
     it(`${id}: every spawn, objective and pickup is mutually reachable`, () => {
@@ -215,18 +242,26 @@ describe('vertical routes are walkable', () => {
       expect(tooSteep).toEqual([]);
     });
 
-    it(`${id}: nav links never require more than one jump height`, () => {
+    it(`${id}: jump links never exceed the player's jump height`, () => {
       const { nav } = compile(id);
-      let worst = 0;
+      let worstJump = 0;
+      let worstSlope = 0;
       for (const n of nav.nodes) {
         for (const l of n.links) {
           const o = nav.nodes[l.to];
           const rise = o.y - n.y;
-          if (rise > worst) worst = rise;
+          const run = Math.hypot(o.x - n.x, o.z - n.z);
+          if (l.kind === LINK_JUMP || l.kind === LINK_STEP) {
+            if (rise > worstJump) worstJump = rise;
+          } else if (l.kind === LINK_WALK && rise > 0) {
+            // Slope walks are allowed to climb, but only at a walkable angle.
+            worstSlope = Math.max(worstSlope, (Math.atan2(rise, run) * 180) / Math.PI);
+          }
         }
       }
       // JUMP_VELOCITY^2 / (2 * GRAVITY) with a small margin.
-      expect(worst).toBeLessThan(1.5);
+      expect(worstJump).toBeLessThan(1.45);
+      expect(worstSlope).toBeLessThanOrEqual(49);
     });
   }
 });
