@@ -1,0 +1,16 @@
+{
+  "name": "@neon/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared simulation, data tables and wire protocol for NEON STRIKE",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

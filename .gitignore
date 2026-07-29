@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vite/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Runtime data / dev database
+data/*.db
+data/*.db-journal
+data/*.sqlite
+packages/server/data/
+
+# Blender scratch output
+assets/source/*.blend1
+assets/.cache/
+tools/.blender-path
