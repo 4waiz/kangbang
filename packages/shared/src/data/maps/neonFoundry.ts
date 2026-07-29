@@ -81,21 +81,25 @@ export function buildNeonFoundry(): MapDef {
   }
 
   // -------------------------------------------------------- conveyor lanes
+  // Kept to |z| <= 18 so the corner approaches to the mezzanine ramps stay open.
   for (const sx of [-1, 1] as const) {
     const x = sx * 22;
-    b.block(x, 0, 4, 52, 0, 1, 'hull');
-    b.boxAt(x, 1.02, 0, 3.4, 0.12, 51, 'conveyor', { ghost: true });
+    b.block(x, 0, 4, 36, 0, 1, 'hull');
+    b.boxAt(x, 1.02, 0, 3.4, 0.12, 35, 'conveyor', { ghost: true });
+    // Wedge on-ramps so the lane can be entered at speed from either end.
+    b.ramp(x, -20, 4, 4, 0, 1, '+z', 'hull');
+    b.ramp(x, 20, 4, 4, 0, 1, '-z', 'hull');
     // Roller housings every 6m.
-    for (let z = -24; z <= 24; z += 6) {
+    for (let z = -15; z <= 15; z += 6) {
       b.block(x, z, 4.4, 1, 1, 0.36, 'trim');
     }
     // Machinery wall behind each lane, with a gap that becomes a flank hole.
-    b.wall(x + sx * 3.2, -26, x + sx * 3.2, -8, 0, 4.2, 1, 'wallLight');
-    b.wall(x + sx * 3.2, 8, x + sx * 3.2, 26, 0, 4.2, 1, 'wallLight');
-    b.neon(x + sx * 3.2, -26, x + sx * 3.2, -8, 4.3, 'neonMagenta', 0.12);
-    b.neon(x + sx * 3.2, 8, x + sx * 3.2, 26, 4.3, 'neonMagenta', 0.12);
-    b.prop('prop_conveyor_arm', x + sx * 3.4, 1, -16, sx > 0 ? 90 : -90, 1);
-    b.prop('prop_conveyor_arm', x + sx * 3.4, 1, 16, sx > 0 ? 90 : -90, 1);
+    b.wall(x + sx * 3.2, -18, x + sx * 3.2, -8, 0, 4.2, 1, 'wallLight');
+    b.wall(x + sx * 3.2, 8, x + sx * 3.2, 18, 0, 4.2, 1, 'wallLight');
+    b.neon(x + sx * 3.2, -18, x + sx * 3.2, -8, 4.3, 'neonMagenta', 0.12);
+    b.neon(x + sx * 3.2, 8, x + sx * 3.2, 18, 4.3, 'neonMagenta', 0.12);
+    b.prop('prop_conveyor_arm', x + sx * 3.4, 1, -14, sx > 0 ? 90 : -90, 1);
+    b.prop('prop_conveyor_arm', x + sx * 3.4, 1, 14, sx > 0 ? 90 : -90, 1);
   }
 
   // ------------------------------------------------------------ side rooms
@@ -131,11 +135,14 @@ export function buildNeonFoundry(): MapDef {
     b.block(ring, i, 0.5, 0.5, 0, MEZZ, 'trim', { ghost: true });
   }
 
-  // Stairs up to the mezzanine at the four corners.
-  b.stairs(-30, -22, 4.4, 9, 0, MEZZ, '-z', 'grate', 8);
-  b.stairs(30, 22, 4.4, 9, 0, MEZZ, '+z', 'grate', 8);
-  b.stairs(-22, 30, 9, 4.4, 0, MEZZ, '-x', 'grate', 8);
-  b.stairs(22, -30, 9, 4.4, 0, MEZZ, '+x', 'grate', 8);
+  // Access to the mezzanine: four wedge ramps that run INWARD from the ring and
+  // stop exactly at the catwalk's inner edge. Running them underneath the deck
+  // would leave less than a metre of headroom near the top.
+  const inner = ring - 2.2; // catwalk inner edge
+  b.ramp(16, -(inner - 5), 4.4, 10, 0, MEZZ, '-z', 'grate');
+  b.ramp(-16, inner - 5, 4.4, 10, 0, MEZZ, '+z', 'grate');
+  b.ramp(-(inner - 5), 22, 10, 4.4, 0, MEZZ, '-x', 'grate');
+  b.ramp(inner - 5, -22, 10, 4.4, 0, MEZZ, '+x', 'grate');
 
   // Mezzanine cover pods.
   for (const [x, z] of [
@@ -148,15 +155,17 @@ export function buildNeonFoundry(): MapDef {
   }
 
   // -------------------------------------------------------------- gantry
-  b.catwalk(-ring, -14, ring, -14, GANTRY, 3.4);
-  b.catwalk(-ring, 14, ring, 14, GANTRY, 3.4);
-  // Ramps from the mezzanine ring up to the gantry.
-  b.ramp(-27, -14, 7, 3.4, MEZZ, GANTRY - MEZZ, '+x', 'grate');
-  b.ramp(27, 14, 7, 3.4, MEZZ, GANTRY - MEZZ, '-x', 'grate');
-  b.ramp(-27, 14, 7, 3.4, MEZZ, GANTRY - MEZZ, '+x', 'grate');
-  b.ramp(27, -14, 7, 3.4, MEZZ, GANTRY - MEZZ, '-x', 'grate');
-  // Gantry crane spans - decorative silhouette + a jump route across the top.
-  b.catwalk(0, -14, 0, 14, GANTRY + 2.6, 2.6, 'grate', false);
+  // Spans stop at x = +-23.5 so the access ramps from the mezzanine ring have
+  // open sky above them.
+  const gEnd = 23.5;
+  b.catwalk(-gEnd, -14, gEnd, -14, GANTRY, 3.4);
+  b.catwalk(-gEnd, 14, gEnd, 14, GANTRY, 3.4);
+  for (const sz of [-1, 1] as const) {
+    b.ramp(-27, sz * 14, 7, 3.4, MEZZ, GANTRY - MEZZ, '+x', 'grate');
+    b.ramp(27, sz * 14, 7, 3.4, MEZZ, GANTRY - MEZZ, '-x', 'grate');
+  }
+  // Crane walkway across the centre; its approach ramps sit outside the span.
+  b.catwalk(0, -10, 0, 10, GANTRY + 2.6, 2.6, 'grate', false);
   b.ramp(0, -12, 2.6, 4, GANTRY, 2.6, '+z', 'grate');
   b.ramp(0, 12, 2.6, 4, GANTRY, 2.6, '-z', 'grate');
   b.prop('prop_crane', 0, GANTRY + 2.6, 0, 0, 1);

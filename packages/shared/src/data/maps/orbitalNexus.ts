@@ -22,7 +22,11 @@ const CORE = 22; // half-size of the central square deck
 const ARM_LEN = 38; // outer reach of each arm
 const ARM_HALF = 12; // half width of each arm
 const RING_Y = 7;
-const TOWER_Y = 13;
+const TOWER_Y = 11.5;
+/** Half width of a tower deck. */
+const TOWER_HALF = 5;
+/** Where the outer rooms sit; kept clear of the ring access ramps. */
+const ROOM_OFFSET = 34;
 
 export function buildOrbitalNexus(): MapDef {
   const b = new MapBuilder(
@@ -109,29 +113,38 @@ export function buildOrbitalNexus(): MapDef {
       b.block(sx * R, sz * R, 0.6, 0.6, 0, RING_Y, 'trim', { ghost: true });
     }
   }
-  // Access ramps in each arm.
-  b.ramp(0, -25, 5, 12, 0, RING_Y, '+z', 'grate');
-  b.ramp(0, 25, 5, 12, 0, RING_Y, '-z', 'grate');
-  b.ramp(-25, 0, 12, 5, 0, RING_Y, '+x', 'grate');
-  b.ramp(25, 0, 12, 5, 0, RING_Y, '-x', 'grate');
+  // Access ramps in each arm. They run from the deck at |z|=29.5 up to the
+  // walkway edge at |z|=19.5 - 10m of run for 7m of rise (35 degrees), and
+  // deliberately stop short of the outer rooms so nobody has to duck under a
+  // door lintel while climbing.
+  b.ramp(0, -24.5, 5, 10, 0, RING_Y, '+z', 'grate');
+  b.ramp(0, 24.5, 5, 10, 0, RING_Y, '-z', 'grate');
+  b.ramp(-24.5, 0, 10, 5, 0, RING_Y, '+x', 'grate');
+  b.ramp(24.5, 0, 10, 5, 0, RING_Y, '-x', 'grate');
 
   // ------------------------------------------------------------ upper towers
+  // Decks at (+-14, +-14), 10x10, reached by a half-width ramp that runs along
+  // the outer half of the ring walkway. The inner half of the ring stays flat,
+  // so the y=7 circuit is never broken by the climb.
   for (const sx of [-1, 1] as const) {
     for (const sz of [-1, 1] as const) {
-      b.block(sx * 14, sz * 14, 8, 8, TOWER_Y - 0.3, 0.3, 'hull');
-      b.railing(sx * 18, sz * 18, sx * 10, sz * 18, TOWER_Y);
-      b.railing(sx * 18, sz * 18, sx * 18, sz * 10, TOWER_Y);
-      b.cover(sx * 14, sz * 14, 2.4, 2.4, TOWER_Y, 1.2, 'hull', 45);
-      b.block(sx * 14, sz * 14, 0.7, 0.7, RING_Y, TOWER_Y - RING_Y, 'trim', { ghost: true });
-      // Ramp up from the ring corner.
-      b.ramp(sx * 17, sz * 17, 5, 5, RING_Y, TOWER_Y - RING_Y, sx > 0 ? '-x' : '+x', 'grate');
+      const tx = sx * 14;
+      const tz = sz * 14;
+      b.block(tx, tz, TOWER_HALF * 2, TOWER_HALF * 2, TOWER_Y - 0.3, 0.3, 'hull');
+      b.railing(sx * 19, sz * 19, sx * 9, sz * 19, TOWER_Y);
+      b.railing(sx * 19, sz * 19, sx * 19, sz * 9, TOWER_Y);
+      b.cover(tx, tz, 2.4, 2.4, TOWER_Y, 1.2, 'hull', 45);
+      b.block(tx, tz, 0.7, 0.7, RING_Y, TOWER_Y - RING_Y, 'trim', { ghost: true });
+      // Ramp: outer 2.4m of the x=+-17 ring segment, z from 3 to 9.
+      b.ramp(sx * 18.3, sz * 6, 2.4, 6, RING_Y, TOWER_Y - RING_Y, sz > 0 ? '+z' : '-z', 'grate');
+      b.neon(sx * 19.4, sz * 3, sx * 19.4, sz * 9, RING_Y + 0.3, sz < 0 ? 'neonCyan' : 'neonMagenta', 0.1);
     }
   }
-  // Bridge ring connecting the towers.
-  b.catwalk(-14, -14, 14, -14, TOWER_Y, 3.2, 'grate');
-  b.catwalk(-14, 14, 14, 14, TOWER_Y, 3.2, 'grate');
-  b.catwalk(-14, -14, -14, 14, TOWER_Y, 3.2, 'grate');
-  b.catwalk(14, -14, 14, 14, TOWER_Y, 3.2, 'grate');
+  // Bridge ring connecting the towers (between tower edges, so no overlap).
+  b.catwalk(-9, -14, 9, -14, TOWER_Y, 3.2, 'grate');
+  b.catwalk(-9, 14, 9, 14, TOWER_Y, 3.2, 'grate');
+  b.catwalk(-14, -9, -14, 9, TOWER_Y, 3.2, 'grate');
+  b.catwalk(14, -9, 14, 9, TOWER_Y, 3.2, 'grate');
 
   // Glass dome overhead - pure silhouette, never collides.
   for (let i = 0; i < 8; i++) {
@@ -145,7 +158,7 @@ export function buildOrbitalNexus(): MapDef {
     [-1, 1],
     [1, 2],
   ] as const) {
-    const z = sz * 33;
+    const z = sz * ROOM_OFFSET;
     b.room(0, z, 22, 9, 0, 7, 'wallLight', {
       floorMat: 'floorLight',
       ceilingMat: 'wallDark',
@@ -164,7 +177,7 @@ export function buildOrbitalNexus(): MapDef {
 
   // Side wings east/west - neutral, hold the flank weapons.
   for (const sx of [-1, 1] as const) {
-    const x = sx * 33;
+    const x = sx * ROOM_OFFSET;
     b.room(x, 0, 9, 22, 0, 7, 'wallLight', {
       floorMat: 'concrete',
       ceilingMat: 'wallDark',
@@ -249,14 +262,14 @@ export function buildOrbitalNexus(): MapDef {
   b.objective({ id: 'H3', kind: 'hardpoint', p: [0, RING_Y, -17], radius: 5.5, label: 'NORTH RING', order: 2 });
   b.objective({ id: 'H4', kind: 'hardpoint', p: [28, 0, 0], radius: 6, label: 'EAST WING', order: 3 });
   b.objective({ id: 'H5', kind: 'hardpoint', p: [0, RING_Y, 17], radius: 5.5, label: 'SOUTH RING', order: 4 });
-  b.objective({ id: 'CORE_ION', kind: 'core', p: [0, 0, -31], radius: 2.4, label: 'ION CORE', team: 1 });
-  b.objective({ id: 'CORE_EMBER', kind: 'core', p: [0, 0, 31], radius: 2.4, label: 'EMBER CORE', team: 2 });
+  b.objective({ id: 'CORE_ION', kind: 'core', p: [0, 0, -ROOM_OFFSET + 2], radius: 2.4, label: 'ION CORE', team: 1 });
+  b.objective({ id: 'CORE_EMBER', kind: 'core', p: [0, 0, ROOM_OFFSET - 2], radius: 2.4, label: 'EMBER CORE', team: 2 });
 
   // -------------------------------------------------------------- pickups
-  b.weaponPickup('pk_rail', 'rail_sniper', 0, TOWER_Y, -14, 34);
-  b.weaponPickup('pk_rail2', 'rail_sniper', 0, TOWER_Y, 14, 34);
-  b.weaponPickup('pk_lmg', 'particle_lmg', -33, 0, 0, 28);
-  b.weaponPickup('pk_launcher', 'arc_launcher', 33, 0, 0, 30);
+  b.weaponPickup('pk_rail', 'rail_sniper', -14, TOWER_Y, -14, 34);
+  b.weaponPickup('pk_rail2', 'rail_sniper', 14, TOWER_Y, 14, 34);
+  b.weaponPickup('pk_lmg', 'particle_lmg', -ROOM_OFFSET, 0, 0, 28);
+  b.weaponPickup('pk_launcher', 'arc_launcher', ROOM_OFFSET, 0, 0, 30);
   b.weaponPickup('pk_shotgun', 'ion_shotgun', 0, 0, 0, 22);
   b.healthPickup('hp_n', 0, RING_Y, -17, 50, 20);
   b.healthPickup('hp_s', 0, RING_Y, 17, 50, 20);

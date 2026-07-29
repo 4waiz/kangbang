@@ -82,6 +82,7 @@ function columnSurfaces(world: CollisionWorld, x: number, z: number, out: number
 }
 
 const scratchGround = { y: 0, normalY: 1, surface: 'metal', found: false, brushIndex: -1 };
+const scratchSettle = { y: 0, normalY: 1, surface: 'metal', found: false, brushIndex: -1 };
 const surfBuf: number[] = [];
 
 export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
@@ -102,13 +103,25 @@ export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
       const x = minX + (c + 0.5) * spacing;
       const z = minZ + (r + 0.5) * spacing;
       const surfaces = columnSurfaces(world, x, z, surfBuf);
+      let lastY = -Infinity;
       for (let s = 0; s < surfaces.length; s++) {
-        const y = surfaces[s];
+        // Settle onto the top of any kerb/step at this level: a player standing
+        // here would be lifted by the movement code's ghost-step, so the nav
+        // node must sit at the same height or the solidity test below rejects
+        // a perfectly walkable tile.
+        const settle = worldGround(world, x, z, surfaces[s] + STEP_HEIGHT, PLAYER_RADIUS * 0.75, scratchSettle);
+        const y = settle.found ? settle.y : surfaces[s];
         if (y < world.killY + 0.5) continue;
+        if (y - lastY < 0.4) continue;
         // Need headroom for a crouched player at minimum.
         const ceil = worldCeiling(world, x, z, y + 0.1, PLAYER_RADIUS);
         if (ceil - y < 1.25) continue;
-        if (worldSolid(world, x, y + 0.05, z, PLAYER_RADIUS * 0.9, Math.min(PLAYER_HEIGHT, ceil - y - 0.05), 0)) continue;
+        // Step tolerance matters: geometry the player can simply step onto is
+        // not an obstruction.
+        if (worldSolid(world, x, y + 0.05, z, PLAYER_RADIUS * 0.9, Math.min(PLAYER_HEIGHT, ceil - y - 0.05), STEP_HEIGHT)) {
+          continue;
+        }
+        lastY = y;
         const id = nodes.length;
         nodes.push({
           id,
@@ -178,9 +191,22 @@ export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
     }
   }
 
+  // --- prune to the reachable set -----------------------------------------
+  // Room ceilings, spire caps and other decorative ledges generate perfectly
+  // valid standing surfaces that no player can ever get to. Keeping them would
+  // let a bot path onto a roof it cannot reach, so drop anything not connected
+  // to a spawn point.
+  const pruned = pruneToReachable(graph, world.def.spawns.map((s) => s.p));
+
   // --- cover scoring ------------------------------------------------------
-  // A node with few walk links and a nearby wall is good cover.
-  for (const n of nodes) {
+  // A node surrounded by geometry is good cover; bots weight these when
+  // retreating or holding an objective.
+  finaliseCover(pruned, world);
+  return pruned;
+}
+
+function finaliseCover(graph: NavGraph, world: CollisionWorld): void {
+  for (const n of graph.nodes) {
     let blocked = 0;
     const probes = 8;
     for (let i = 0; i < probes; i++) {
@@ -191,8 +217,71 @@ export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
     }
     n.coverScore = clamp(blocked / probes, 0, 1);
   }
+}
 
-  return graph;
+/**
+ * Keep only nodes reachable from at least one spawn point, then re-index.
+ * Links are followed in both directions during the flood so a one-way drop
+ * still counts the landing area as reachable.
+ */
+function pruneToReachable(graph: NavGraph, seeds: readonly [number, number, number][]): NavGraph {
+  const n = graph.nodes.length;
+  if (n === 0) return graph;
+
+  // Reverse adjacency so drops do not orphan the ground below a ledge.
+  const incoming: number[][] = new Array(n);
+  for (let i = 0; i < n; i++) incoming[i] = [];
+  for (const node of graph.nodes) {
+    for (const l of node.links) incoming[l.to].push(node.id);
+  }
+
+  const reachable = new Uint8Array(n);
+  const stack: number[] = [];
+  for (const [sx, sy, sz] of seeds) {
+    const id = nearestNode(graph, sx, sy, sz);
+    if (id >= 0 && !reachable[id]) {
+      reachable[id] = 1;
+      stack.push(id);
+    }
+  }
+  while (stack.length) {
+    const cur = stack.pop() as number;
+    for (const l of graph.nodes[cur].links) {
+      if (!reachable[l.to]) {
+        reachable[l.to] = 1;
+        stack.push(l.to);
+      }
+    }
+    for (const from of incoming[cur]) {
+      if (!reachable[from]) {
+        reachable[from] = 1;
+        stack.push(from);
+      }
+    }
+  }
+
+  const remap = new Int32Array(n).fill(-1);
+  const kept: NavNode[] = [];
+  for (const node of graph.nodes) {
+    if (!reachable[node.id]) continue;
+    remap[node.id] = kept.length;
+    kept.push(node);
+  }
+  for (const node of kept) {
+    node.id = remap[node.id];
+    const links: NavLink[] = [];
+    for (const l of node.links) {
+      const to = remap[l.to];
+      if (to >= 0) links.push({ to, cost: l.cost, kind: l.kind });
+    }
+    node.links = links;
+  }
+
+  const cells: number[][] = new Array(graph.cols * graph.rows);
+  for (let i = 0; i < cells.length; i++) cells[i] = [];
+  for (const node of kept) cells[node.row * graph.cols + node.col].push(node.id);
+
+  return { ...graph, nodes: kept, cells };
 }
 
 /**
@@ -242,12 +331,24 @@ function traversable(
 // Queries
 // ---------------------------------------------------------------------------
 
+/**
+ * Closest node to a world position, weighting vertical distance heavily so a
+ * point at ground level never snaps to a catwalk directly overhead.
+ *
+ * Rings are expanded until the best candidate cannot be beaten by anything
+ * further out - stopping at the first non-empty ring would return whatever
+ * happens to share the query's grid cell, which is exactly how objectives
+ * buried inside a pillar used to resolve to the walkway above them.
+ */
 export function nearestNode(graph: NavGraph, x: number, y: number, z: number): number {
   const c = clamp(Math.floor((x - graph.minX) / graph.spacing), 0, graph.cols - 1);
   const r = clamp(Math.floor((z - graph.minZ) / graph.spacing), 0, graph.rows - 1);
+  const maxRadius = 8;
   let best = -1;
   let bestD = Infinity;
-  for (let radius = 0; radius <= 4 && best < 0; radius++) {
+  for (let radius = 0; radius <= maxRadius; radius++) {
+    // Nothing in this ring or beyond can be closer than this horizontally.
+    if (best >= 0 && (radius - 1) * graph.spacing > bestD) break;
     for (let dr = -radius; dr <= radius; dr++) {
       for (let dc = -radius; dc <= radius; dc++) {
         if (radius > 0 && Math.max(Math.abs(dr), Math.abs(dc)) !== radius) continue;
@@ -257,7 +358,7 @@ export function nearestNode(graph: NavGraph, x: number, y: number, z: number): n
         for (const id of graph.cells[rr * graph.cols + cc]) {
           const n = graph.nodes[id];
           const dy = Math.abs(n.y - y);
-          const d = Math.hypot(n.x - x, n.z - z) + dy * 2.4;
+          const d = Math.hypot(n.x - x, n.z - z) + dy * 3.0;
           if (d < bestD) {
             bestD = d;
             best = id;

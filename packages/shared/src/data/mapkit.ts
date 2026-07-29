@@ -76,6 +76,25 @@ export class MapBuilder {
     return this.boxAt(cx, y - thickness / 2, cz, w, thickness, d, m, opts);
   }
 
+  /**
+   * Floor slab given as X/Z RANGES rather than centre+size.  Essential when
+   * building a deck with a hole in it (sunken plazas, stairwells) - authoring
+   * those by centre arithmetic is how you end up with a plaza buried under its
+   * own street.
+   */
+  slab(
+    x0: number,
+    x1: number,
+    z0: number,
+    z1: number,
+    y: number,
+    m: string,
+    thickness = 0.6,
+    opts: Partial<BrushDef> = {},
+  ): BrushDef {
+    return this.floor((x0 + x1) / 2, (z0 + z1) / 2, Math.abs(x1 - x0), Math.abs(z1 - z0), y, m, thickness, opts);
+  }
+
   /** Ceiling slab whose BOTTOM surface sits at `y`. */
   ceiling(cx: number, cz: number, w: number, d: number, y: number, m: string, thickness = 0.6, opts: Partial<BrushDef> = {}): BrushDef {
     return this.boxAt(cx, y + thickness / 2, cz, w, thickness, d, m, { noMinimap: true, ...opts });
@@ -127,7 +146,10 @@ export class MapBuilder {
     return b;
   }
 
-  /** Discrete staircase - reads better than a wedge for interior architecture. */
+  /**
+   * Discrete staircase - reads better than a wedge for interior architecture.
+   * `dir` matches ramp(): '+x' means the steps CLIMB towards +X.
+   */
   stairs(
     cx: number,
     cz: number,
@@ -135,23 +157,24 @@ export class MapBuilder {
     d: number,
     bottom: number,
     height: number,
-    dir: '+x' | '-x' | '+z' | '-z',
+    dir: RampDir,
     m: string,
     steps = 6,
     opts: Partial<BrushDef> = {},
   ): void {
-    const along = dir === '+x' || dir === '-x' ? d : w;
-    const stepDepth = along / steps;
+    const alongX = dir === '+x' || dir === '-x';
+    const along = alongX ? w : d;
+    const stepSize = along / steps;
     const stepHeight = height / steps;
     for (let i = 0; i < steps; i++) {
       const t = (i + 0.5) / steps;
       const off = (t - 0.5) * along;
       const signed = dir === '+x' || dir === '+z' ? off : -off;
       const h = stepHeight * (i + 1);
-      if (dir === '+x' || dir === '-x') {
-        this.block(cx, cz + signed, w, stepDepth + 0.02, bottom, h, m, opts);
+      if (alongX) {
+        this.block(cx + signed, cz, stepSize + 0.02, d, bottom, h, m, opts);
       } else {
-        this.block(cx + signed, cz, stepDepth + 0.02, d, bottom, h, m, opts);
+        this.block(cx, cz + signed, w, stepSize + 0.02, bottom, h, m, opts);
       }
     }
   }
