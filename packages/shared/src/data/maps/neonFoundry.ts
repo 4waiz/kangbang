@@ -179,27 +179,29 @@ export function buildNeonFoundry(): MapDef {
     b.neon(-10, z + sz * 3.4, 10, z + sz * 3.4, 5.4, team === 1 ? 'neonCyan' : 'neonAmber', 0.18);
     b.lightPanel(0, 5.8, z, 12, 4, team === 1 ? 0x9ff0ff : 0xffc39a, 1.4, 18);
     b.prop('prop_spawn_arch', 0, 0, z + sz * -4.2, sz < 0 ? 0 : 180, 1);
-    b.spawnCluster(0, 0, z, sz < 0 ? 0 : 180, team, 5, 6.5, 'base');
-    // FFA spawns reuse the bays plus neutral points.
-    b.spawnCluster(0, 0, z, sz < 0 ? 0 : 180, 0, 3, 5.5);
+    // Face the arena centre, never the back wall of the bay.
+    b.spawnCluster(0, 0, z, [0, 0], team, 5, 7, 'base');
+    // FFA reuses the bays plus the neutral points below.
+    b.spawnCluster(0, 0, z, [0, 0], 0, 3, 5.5);
   }
 
-  // Neutral FFA spawn points spread around the ring and mezzanine.
-  for (const [x, y, z, yaw] of [
-    [-28, 0, -14, 90],
-    [28, 0, 14, -90],
-    [-28, 0, 14, 90],
-    [28, 0, -14, -90],
-    [-30, MEZZ, 0, 90],
-    [30, MEZZ, 0, -90],
-    [0, MEZZ, -30, 0],
-    [0, MEZZ, 30, 180],
-    [-16, 0, -24, 45],
-    [16, 0, 24, -135],
-    [-16, 0, 24, 135],
-    [16, 0, -24, -45],
+  // Neutral FFA spawn points spread around the ring and mezzanine, all facing
+  // inwards so nobody opens their eyes looking at concrete.
+  for (const [x, y, z] of [
+    [-28, 0, -14],
+    [28, 0, 14],
+    [-28, 0, 14],
+    [28, 0, -14],
+    [-30, MEZZ, 0],
+    [30, MEZZ, 0],
+    [0, MEZZ, -30],
+    [0, MEZZ, 30],
+    [-16, 0, -24],
+    [16, 0, 24],
+    [-16, 0, 24],
+    [16, 0, -24],
   ] as const) {
-    b.spawn(x, y, z, yaw, 0);
+    b.spawnLookingAt(x, y, z, 0, 0, 0);
   }
 
   // ------------------------------------------------------------ crate cover

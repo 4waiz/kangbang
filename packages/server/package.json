@@ -1,0 +1,23 @@
+{
+  "name": "@neon/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative game server for NEON STRIKE",
+  "main": "dist/index.mjs",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "start": "node dist/index.mjs",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neon/shared": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.2",
+    "tsx": "^4.19.2"
+  }
+}

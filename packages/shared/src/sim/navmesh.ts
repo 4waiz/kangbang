@@ -52,6 +52,8 @@ export interface NavGraph {
 }
 
 const MAX_JUMP_HEIGHT = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY) - 0.12;
+/** tan of the steepest walkable slope - anything shallower can be walked up. */
+const MAX_SLOPE_TAN = Math.sqrt(1 - MAX_SLOPE_COS * MAX_SLOPE_COS) / MAX_SLOPE_COS;
 
 /** All standable surface heights in one column, lowest first. */
 function columnSurfaces(world: CollisionWorld, x: number, z: number, out: number[]): number[] {
@@ -156,6 +158,11 @@ export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
         } else if (dy > 0 && dy <= STEP_HEIGHT) {
           kind = LINK_STEP;
           cost = horiz + dy * 0.5;
+        } else if (Math.abs(dy) <= horiz * MAX_SLOPE_TAN && isContinuousSlope(world, n, o)) {
+          // A ramp or staircase: the surface between the two nodes rises
+          // smoothly, so this is a plain walk even though dy > step height.
+          kind = LINK_WALK;
+          cost = horiz + Math.abs(dy) * 0.6;
         } else if (dy > 0 && dy <= MAX_JUMP_HEIGHT) {
           kind = LINK_JUMP;
           cost = horiz + dy * 2.2 + 1.4;
@@ -187,6 +194,29 @@ export function buildNavGraph(world: CollisionWorld, spacing = 2.6): NavGraph {
 
   return graph;
 }
+
+/**
+ * True when the ground between two nodes climbs smoothly, i.e. there is a ramp
+ * or staircase joining them rather than a ledge.  Sampled at three interior
+ * points; each must sit between the endpoint heights with a small tolerance.
+ */
+function isContinuousSlope(world: CollisionWorld, a: NavNode, b: NavNode): boolean {
+  const lo = Math.min(a.y, b.y);
+  const hi = Math.max(a.y, b.y);
+  for (let i = 1; i <= 3; i++) {
+    const t = i / 4;
+    const x = a.x + (b.x - a.x) * t;
+    const z = a.z + (b.z - a.z) * t;
+    const expected = a.y + (b.y - a.y) * t;
+    const g = worldGround(world, x, z, hi + 0.4, PLAYER_RADIUS * 0.6, scratchSlope);
+    if (!g.found) return false;
+    if (g.y < lo - 0.45 || g.y > hi + 0.45) return false;
+    if (Math.abs(g.y - expected) > 0.7) return false;
+  }
+  return true;
+}
+
+const scratchSlope = { y: 0, normalY: 1, surface: 'metal', found: false, brushIndex: -1 };
 
 function traversable(
   world: CollisionWorld,

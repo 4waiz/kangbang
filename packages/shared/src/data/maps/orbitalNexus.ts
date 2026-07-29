@@ -158,8 +158,8 @@ export function buildOrbitalNexus(): MapDef {
     b.prop('prop_spawn_arch', 0, 0, z + sz * 4.1, sz < 0 ? 180 : 0, 1);
     b.prop('prop_terminal', -7, 0, z, 90, 1);
     b.prop('prop_terminal', 7, 0, z, -90, 1);
-    b.spawnCluster(0, 0, z, sz < 0 ? 0 : 180, team, 5, 6.5, 'base');
-    b.spawnCluster(0, 0, z, sz < 0 ? 0 : 180, 0, 3, 5.5);
+    b.spawnCluster(0, 0, z, [0, 0], team, 5, 7, 'base');
+    b.spawnCluster(0, 0, z, [0, 0], 0, 3, 5.5);
   }
 
   // Side wings east/west - neutral, hold the flank weapons.
@@ -176,25 +176,24 @@ export function buildOrbitalNexus(): MapDef {
     b.lightPanel(x, 6.7, 0, 4, 12, 0xdff2ff, 1.2, 18);
     b.prop('prop_crate_stack', x + sx * -2.6, 0, 0, 0, 1);
     b.prop('prop_holo_sign', x + sx * 4.1, 4.6, 0, sx > 0 ? -90 : 90, 1, 0x4fe0ff);
-    // Neutral spawns.
-    b.spawn(x, 0, -6, sx > 0 ? -90 : 90, 0);
-    b.spawn(x, 0, 6, sx > 0 ? -90 : 90, 0);
+    b.spawnLookingAt(x, 0, -6, 0, 0, 0);
+    b.spawnLookingAt(x, 0, 6, 0, 0, 0);
   }
 
-  // Extra neutral spawns for FFA spread.
-  for (const [x, y, z, yaw] of [
-    [-R, RING_Y, 0, 90],
-    [R, RING_Y, 0, -90],
-    [0, RING_Y, -R, 0],
-    [0, RING_Y, R, 180],
-    [-14, TOWER_Y, -14, 135],
-    [14, TOWER_Y, 14, -45],
-    [-11, 3.4, 11, 45],
-    [11, 3.4, -11, -135],
-    [0, 0, -28, 0],
-    [0, 0, 28, 180],
+  // Extra neutral spawns for FFA spread; every one looks at the spire.
+  for (const [x, y, z] of [
+    [-R, RING_Y, 0],
+    [R, RING_Y, 0],
+    [0, RING_Y, -R],
+    [0, RING_Y, R],
+    [-14, TOWER_Y, -14],
+    [14, TOWER_Y, 14],
+    [-11, 3.4, 11],
+    [11, 3.4, -11],
+    [0, 0, -28],
+    [0, 0, 28],
   ] as const) {
-    b.spawn(x, y, z, yaw, 0);
+    b.spawnLookingAt(x, y, z, 0, 0, 0);
   }
 
   // ---------------------------------------------------------------- cover

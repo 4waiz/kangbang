@@ -334,11 +334,34 @@ export class MapBuilder {
     this.spawns.push({ p: [x, y, z], yaw: (yawDeg * Math.PI) / 180, team, tag });
   }
 
-  /** Ring of spawns around a point - keeps teams from stacking on one tile. */
-  spawnCluster(cx: number, y: number, cz: number, yawDeg: number, team: number, count: number, spread = 3.2, tag?: string): void {
+  /**
+   * Spawn that looks at a target point.  Preferred over raw yaw: it is
+   * impossible to accidentally face a player into the back wall of their own
+   * spawn, which is exactly the bug this replaced.
+   */
+  spawnLookingAt(x: number, y: number, z: number, tx: number, tz: number, team = 0, tag?: string): void {
+    this.spawn(x, y, z, yawTowardsDeg(x, z, tx, tz), team, tag);
+  }
+
+  /**
+   * Ring of spawns around a point, all facing a shared target.  Keeps teams
+   * from stacking on one tile while guaranteeing a sensible initial view.
+   */
+  spawnCluster(
+    cx: number,
+    y: number,
+    cz: number,
+    target: [number, number],
+    team: number,
+    count: number,
+    spread = 3.2,
+    tag?: string,
+  ): void {
     for (let i = 0; i < count; i++) {
-      const a = (i / count) * Math.PI * 2;
-      this.spawn(cx + Math.cos(a) * spread, y, cz + Math.sin(a) * spread, yawDeg, team, tag);
+      const a = (i / count) * Math.PI * 2 + 0.35;
+      const x = cx + Math.cos(a) * spread;
+      const z = cz + Math.sin(a) * spread * 0.55;
+      this.spawnLookingAt(x, y, z, target[0], target[1], team, tag);
     }
   }
 
@@ -404,6 +427,14 @@ export class MapBuilder {
       ambience,
     };
   }
+}
+
+/**
+ * Yaw (degrees) that makes a player at (fromX, fromZ) look at (toX, toZ).
+ * Matches the engine convention forward = (-sin yaw, 0, -cos yaw).
+ */
+export function yawTowardsDeg(fromX: number, fromZ: number, toX: number, toZ: number): number {
+  return (Math.atan2(-(toX - fromX), -(toZ - fromZ)) * 180) / Math.PI;
 }
 
 /** Mirror a set of coordinates through the origin, for symmetric layouts. */

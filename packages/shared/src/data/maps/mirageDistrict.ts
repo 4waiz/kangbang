@@ -148,26 +148,26 @@ export function buildMirageDistrict(): MapDef {
     b.neon(-12, z + sz * 3.6, 12, z + sz * 3.6, 7.2, team === 1 ? 'neonCyan' : 'neonAmber', 0.2);
     b.lightPanel(0, 7.7, z, 16, 4, team === 1 ? 0x9ff0ff : 0xffc39a, 1.5, 22);
     b.prop('prop_spawn_arch', 0, 0.35, z + sz * 3.9, sz < 0 ? 180 : 0, 1);
-    b.spawnCluster(0, 0.35, z, sz < 0 ? 0 : 180, team, 5, 7, 'base');
-    b.spawnCluster(0, 0.35, z, sz < 0 ? 0 : 180, 0, 3, 6);
+    b.spawnCluster(0, 0.35, z, [0, 0], team, 5, 7.5, 'base');
+    b.spawnCluster(0, 0.35, z, [0, 0], 0, 3, 6);
   }
 
-  // Neutral spawns for FFA / progression.
-  for (const [x, y, z, yaw] of [
-    [-30, 0, 0, 90],
-    [30, 0, 0, -90],
-    [0, 0, -24, 0],
-    [0, 0, 24, 180],
-    [-20.5, LOW_ROOF, -16, 135],
-    [20.5, LOW_ROOF, 16, -45],
-    [-32, ROOF, -32, 135],
-    [32, ROOF, 32, -45],
-    [-32, ROOF, 32, 45],
-    [32, ROOF, -32, -135],
-    [-16, 0, -34, 20],
-    [16, 0, 34, -160],
+  // Neutral spawns for FFA / progression, all facing the plaza.
+  for (const [x, y, z] of [
+    [-30, 0, 0],
+    [30, 0, 0],
+    [0, 0, -24],
+    [0, 0, 24],
+    [-20.5, LOW_ROOF, -16],
+    [20.5, LOW_ROOF, 16],
+    [-32, ROOF, -32],
+    [32, ROOF, 32],
+    [-32, ROOF, 32],
+    [32, ROOF, -32],
+    [-16, 0, -34],
+    [16, 0, 34],
   ] as const) {
-    b.spawn(x, y, z, yaw, 0);
+    b.spawnLookingAt(x, y, z, 0, 0, 0);
   }
 
   // ---------------------------------------------------------- street cover

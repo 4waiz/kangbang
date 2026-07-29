@@ -7,7 +7,6 @@
  */
 
 import {
-  BODY_PART_MULTIPLIER,
   HITBOX_ARM_HALF_WIDTH,
   HITBOX_HEAD_FRACTION,
   HITBOX_HEAD_RADIUS,
@@ -21,7 +20,7 @@ import {
 import { Rng, clamp, hashSeed } from '../math.js';
 import { PERKS, type PerkDef } from '../data/classes.js';
 import { damageAtRange, type WeaponDef } from '../data/weapons.js';
-import { BodyPart, type BodyPartId } from '../types.js';
+import { BODY_PART_MULTIPLIER, BodyPart, type BodyPartId } from '../types.js';
 import { worldRaycast, type CollisionWorld, type RayHit } from './world.js';
 
 // ---------------------------------------------------------------------------
