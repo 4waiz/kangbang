@@ -81,7 +81,9 @@
 
 .logo__text {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  white-space: nowrap;
   line-height: 0.92;
   font-family: var(--font-display);
   text-transform: uppercase;

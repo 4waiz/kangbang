@@ -56,6 +56,39 @@ function findBrowser() {
   return candidates.find((p) => existsSync(p)) ?? null;
 }
 
+/**
+ * Detect markup that has leaked into visible text.
+ *
+ * This is the failure mode where a helper returns an HTML string and it lands in
+ * a child position, so the DOM builder makes a text node out of it and the user
+ * sees `<svg width="22" ...>` in a button label. Nothing else in this file can
+ * catch it: there is no error, no missing element, and the button count is right.
+ */
+async function findMarkupLeaks(page, where) {
+  return page.evaluate((label) => {
+    const bad = [];
+    // `noscript` holds markup as text by definition when scripting is on, and
+    // script/style/template contents are never rendered. None of them can leak.
+    const INERT = new Set(['NOSCRIPT', 'SCRIPT', 'STYLE', 'TEMPLATE']);
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      let inert = false;
+      for (let p = n.parentElement; p; p = p.parentElement) {
+        if (INERT.has(p.tagName)) { inert = true; break; }
+      }
+      if (inert) continue;
+      const text = (n.nodeValue ?? '').trim();
+      if (!text) continue;
+      // A visible `<tag`, or a bare SVG/HTML attribute, means serialised markup.
+      if (/<\/?[a-zA-Z][\w-]*[\s>/]/.test(text) || /(?:stroke-width|viewBox|stroke-linejoin|aria-hidden)\s*=/.test(text)) {
+        bad.push(`${label}: "${text.slice(0, 70)}"`);
+        if (bad.length >= 5) break;
+      }
+    }
+    return bad;
+  }, where);
+}
+
 const checks = [];
 function check(name, ok, detail = '') {
   checks.push({ name, ok, detail });
@@ -216,6 +249,8 @@ async function main() {
   check('main menu has navigation', menuButtons.length >= 10, `${menuButtons.length} buttons`);
   await shoot('02-menu');
 
+  const markupLeaks = [...(await findMarkupLeaks(page, 'menu'))];
+
   // Every screen must open without throwing.
   const screensToVisit = [
     ['QUICK PLAY', '.cards'],
@@ -242,6 +277,7 @@ async function main() {
       if (!clicked) continue;
       await page.waitForSelector(selector, { timeout: 15000 });
       screensOk++;
+      markupLeaks.push(...(await findMarkupLeaks(page, label)));
       await shoot(`03-${label.toLowerCase().replace(/\s+/g, '-')}`);
       // Back to the menu for the next one.
       await page.evaluate(() => {
@@ -254,6 +290,7 @@ async function main() {
     }
   }
   check('all menu screens open', screensOk === screensToVisit.length, `${screensOk}/${screensToVisit.length}`);
+  check('no markup rendered as text', markupLeaks.length === 0, markupLeaks.slice(0, 3).join(' | '));
 
   // ------------------------------------------------------------- join match
   await page.evaluate(() => {
@@ -370,6 +407,9 @@ async function main() {
     check('class/loadout reachable mid-match', loadoutFromMatch);
     await shoot('07-loadout-in-match');
   }
+
+  const inMatchLeaks = await findMarkupLeaks(page, 'hud');
+  check('no markup rendered as text in the HUD', inMatchLeaks.length === 0, inMatchLeaks.slice(0, 3).join(' | '));
 
   // --------------------------------------------------------------- errors
   check('no uncaught page errors', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
