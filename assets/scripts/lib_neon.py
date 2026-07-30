@@ -511,6 +511,47 @@ def decimate_copy(obj: bpy.types.Object, name: str, ratio: float) -> bpy.types.O
 # ---------------------------------------------------------------------------
 
 
+def reorient(mode: str) -> None:
+    """
+    Rotate the whole scene so the exported glTF lands on the engine's axes.
+
+    Blender is Z-up; glTF is Y-up, and the exporter converts with
+    (gx, gy, gz) = (bx, bz, -by). That conversion is why authoring convention
+    matters, and why this step exists rather than a fudge factor in the client:
+
+      'yup'  - authored with +Y up and -Z forward (weapons, arms, props).
+               Rotating +90 degrees about Blender X maps (x, y, z) to (x, -z, y),
+               which after the exporter's conversion reproduces the authored
+               axes exactly. Without it a rifle exports pointing at the floor.
+
+      'face' - authored Blender-native (Z up) but facing -Y (characters).
+               Rotating 180 degrees about Blender Z leaves the model facing -Z
+               after export, which is the engine's forward direction.
+
+    Call immediately before export_glb(), after all joins.
+    """
+    if mode == "yup":
+        matrix = mathutils.Euler((math.radians(90), 0.0, 0.0)).to_matrix().to_4x4()
+    elif mode == "face":
+        matrix = mathutils.Euler((0.0, 0.0, math.radians(180))).to_matrix().to_4x4()
+    else:
+        return
+
+    transformed_meshes: set[str] = set()
+    for obj in list(bpy.data.objects):
+        if obj.type == "MESH":
+            # join()/transform_apply have already baked object transforms, so
+            # transforming the mesh data is enough - and each mesh datablock
+            # must only be transformed once even if several objects share it.
+            if obj.data.name not in transformed_meshes:
+                obj.data.transform(matrix)
+                obj.data.update()
+                transformed_meshes.add(obj.data.name)
+            obj.location = (matrix @ obj.location.to_4d()).to_3d()
+        elif obj.type == "EMPTY":
+            obj.location = (matrix @ obj.location.to_4d()).to_3d()
+
+
 def export_glb(name: str, save_blend: bool = True, objects: list[bpy.types.Object] | None = None) -> str:
     """Write <EXPORT_DIR>/<name>.glb and (optionally) the .blend source."""
     for obj in bpy.data.objects:

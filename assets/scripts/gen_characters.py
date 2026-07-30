@@ -221,6 +221,9 @@ def build_class(class_id: str) -> None:
     tris = N.triangle_count(obj)
     if tris > 700:
         N.decimate_copy(obj, f"char_{class_id}_LOD1", 0.45)
+    # Characters are Blender-native (Z up) but authored facing -Y; turn them so
+    # they face the engine's forward (-Z) after export.
+    N.reorient("face")
     N.export_glb(f"char_{class_id}")
 
 

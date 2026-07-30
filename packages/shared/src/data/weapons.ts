@@ -879,8 +879,10 @@ export const WEAPONS: Record<string, WeaponDef> = {
     unlockLevel: 0,
     damage: 62,
     damageMin: 62,
+    // Melee has no falloff, but the window still has to be non-degenerate:
+    // damageAtRange divides by (falloffEnd - falloffStart).
     falloffStart: 100,
-    falloffEnd: 100,
+    falloffEnd: 120,
     range: 2.6,
     headshotMultiplier: 1.35,
     rpm: 105,
@@ -955,8 +957,10 @@ export const WEAPONS: Record<string, WeaponDef> = {
     unlockLevel: 14,
     damage: 42,
     damageMin: 42,
+    // The blast, not the direct hit, is the damage source, so there is no
+    // falloff on the projectile itself - but the window must still be positive.
     falloffStart: 100,
-    falloffEnd: 100,
+    falloffEnd: 120,
     range: 260,
     headshotMultiplier: 1,
     rpm: 52,

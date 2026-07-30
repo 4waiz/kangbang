@@ -477,6 +477,8 @@ def build_prop(name: str) -> None:
     tris = N.triangle_count(obj)
     if tris > 500:
         N.decimate_copy(obj, f"{name}_LOD1", 0.4)
+    # Props are authored +Y up like the weapons, not Blender-native Z up.
+    N.reorient("yup")
     N.export_glb(name)
 
 

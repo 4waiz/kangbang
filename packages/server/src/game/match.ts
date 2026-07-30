@@ -385,10 +385,13 @@ export class Match {
 
     if (this.phase === MatchPhase.Warmup || this.phase === MatchPhase.Countdown) {
       this.timeRemaining = Math.max(0, this.timeRemaining - dt);
-      // Players can move and shoot in warmup; nothing is scored.
+      // Warmup is fully playable: move, shoot, die and respawn. Nothing scores.
+      // Respawns must run here or anyone who dies in warmup is stuck watching a
+      // death screen until the match begins.
       this.simulatePlayers(dt, nowMs, false);
       this.stepProjectiles(dt, nowMs);
       this.stepPickups(dt, nowMs);
+      this.stepRespawns(dt, nowMs);
       return;
     }
 

@@ -443,6 +443,7 @@ def build_arms() -> None:
     N.add_uvs(obj)
     N.socket("left_hand", (-0.070, -0.058, -0.055))
     N.socket("right_hand", (0.070, -0.058, -0.048))
+    N.reorient("yup")
     N.export_glb("char_arms_fp")
 
 
@@ -465,6 +466,7 @@ def build_weapon(weapon_id: str) -> None:
     tris = N.triangle_count(obj)
     if tris > 900:
         N.decimate_copy(obj, f"wpn_{weapon_id}_LOD1", 0.5)
+    N.reorient("yup")
     N.export_glb(f"wpn_{weapon_id}")
 
     # --- world pickup -----------------------------------------------------
@@ -482,6 +484,7 @@ def build_weapon(weapon_id: str) -> None:
         v.co.y -= bbox_center[1]
         v.co.z -= bbox_center[2]
     obj.data.update()
+    N.reorient("yup")
     N.export_glb(f"wpn_{weapon_id}_world")
 
 

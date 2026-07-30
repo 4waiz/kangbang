@@ -298,7 +298,7 @@ export function buildMirageDistrict(): MapDef {
       fogDensity: 0.014,
       hemiSky: 0x5f6ec4,
       hemiGround: 0x241a2e,
-      hemiIntensity: 0.75,
+      hemiIntensity: 1.25,
       sunColor: 0xffd0e8,
       sunIntensity: 0.75,
       sunDir: [0.35, -0.85, 0.4],

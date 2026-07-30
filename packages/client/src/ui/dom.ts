@@ -9,7 +9,7 @@
 
 import { audio } from '../engine/audio.js';
 
-export type Child = Node | string | number | null | undefined | false;
+export type Child = Node | string | number | null | undefined | false | Child[];
 
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -40,7 +40,11 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 export function append(parent: Node, ...children: Child[]): void {
   for (const child of children) {
     if (child === null || child === undefined || child === false) continue;
-    parent.appendChild(typeof child === 'object' ? child : document.createTextNode(String(child)));
+    if (Array.isArray(child)) {
+      append(parent, ...child);
+      continue;
+    }
+    parent.appendChild(child instanceof Node ? child : document.createTextNode(String(child)));
   }
 }
 

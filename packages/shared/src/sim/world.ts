@@ -191,6 +191,13 @@ export const MATERIALS: Record<string, MaterialDef> = {
   floorLight: { color: 0x4a586d, emissive: 0x1a3d52, emissiveIntensity: 0.35, roughness: 0.5, metalness: 0.4, opacity: 1, surface: 'metal', minimap: 0x33405a, pattern: 'grid' },
   concrete: { color: 0x8d939d, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0.04, opacity: 1, surface: 'concrete', minimap: 0x5c626c, pattern: 'noise' },
   wallLight: { color: 0xd8dee8, emissive: 0, emissiveIntensity: 0, roughness: 0.55, metalness: 0.16, opacity: 1, surface: 'panel', minimap: 0x7d8698, pattern: 'panel' },
+  /**
+   * Ceiling light fixtures. These have to be genuinely emissive: the interior
+   * maps are enclosed, so with a non-emitting fixture material the only light
+   * reaching the floor is the point-light budget, and on low effects quality
+   * that budget is six lights for a 72m room.
+   */
+  lampPanel: { color: 0xf2f8ff, emissive: 0xdff2ff, emissiveIntensity: 2.2, roughness: 0.3, metalness: 0, opacity: 1, surface: 'panel', minimap: 0, pattern: 'plain' },
   wallDark: { color: 0x2a323f, emissive: 0, emissiveIntensity: 0, roughness: 0.68, metalness: 0.3, opacity: 1, surface: 'metal', minimap: 0x1e2530, pattern: 'panel' },
   hull: { color: 0x59627a, emissive: 0, emissiveIntensity: 0, roughness: 0.45, metalness: 0.72, opacity: 1, surface: 'metal', minimap: 0x3d4457, pattern: 'panel' },
   trim: { color: 0x1b202a, emissive: 0, emissiveIntensity: 0, roughness: 0.4, metalness: 0.8, opacity: 1, surface: 'metal', minimap: 0x15191f, pattern: 'plain' },

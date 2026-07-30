@@ -314,7 +314,9 @@ export function buildNeonFoundry(): MapDef {
       fogDensity: 0.012,
       hemiSky: 0x7d9ab8,
       hemiGround: 0x2a2f3a,
-      hemiIntensity: 0.85,
+      // Enclosed interior: the hemisphere is doing the work a sky would do
+      // outdoors, so it has to be strong or the floor reads as black.
+      hemiIntensity: 1.75,
       sunColor: 0xfff2e0,
       sunIntensity: 1.15,
       sunDir: [-0.4, -1, -0.35],

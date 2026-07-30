@@ -130,10 +130,23 @@ export class InputManager {
     }
   }
 
+  /**
+   * Release pointer lock deliberately (opening a menu).
+   *
+   * The `selfReleased` flag matters: losing the lock is normally the signal
+   * that the player hit Escape, and the UI reacts by opening the pause menu.
+   * When *we* drop the lock to show a screen, that reaction would immediately
+   * bounce the player from the screen they just opened back to pause.
+   */
   releaseLock(): void {
     this.lockRequested = false;
-    if (document.pointerLockElement) document.exitPointerLock();
+    if (document.pointerLockElement) {
+      this.selfReleased = true;
+      document.exitPointerLock();
+    }
   }
+
+  private selfReleased = false;
 
   private onPointerLockChange(): void {
     const wasLocked = this.locked;
@@ -141,7 +154,11 @@ export class InputManager {
     this.lockRequested = false;
     if (!this.locked) {
       this.releaseAll();
-      if (wasLocked) this.onEscape();
+      const userInitiated = wasLocked && !this.selfReleased;
+      this.selfReleased = false;
+      if (userInitiated) this.onEscape();
+    } else {
+      this.selfReleased = false;
     }
     this.onLockChange(this.locked);
   }

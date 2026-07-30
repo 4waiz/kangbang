@@ -309,7 +309,7 @@ export function buildOrbitalNexus(): MapDef {
       fogDensity: 0.006,
       hemiSky: 0x6f8fc4,
       hemiGround: 0x171d2c,
-      hemiIntensity: 0.7,
+      hemiIntensity: 1.05,
       sunColor: 0xffffff,
       sunIntensity: 1.5,
       sunDir: [0.55, -0.7, 0.4],

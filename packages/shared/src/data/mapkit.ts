@@ -425,9 +425,11 @@ export class MapBuilder {
     this.lights.push({ kind, p: [x, y, z], color, intensity, range, s, ry: (ryDeg * Math.PI) / 180 });
   }
 
-  /** Ceiling light panel: emissive quad + a matching point light. */
+  /** Ceiling light panel: an emissive fixture plus a matching point light. */
   lightPanel(x: number, y: number, z: number, w: number, d: number, color = 0xdff2ff, intensity = 1.4, range = 16): void {
-    this.boxAt(x, y, z, w, 0.16, d, 'wallLight', { ghost: true, glow: 1.6, noMinimap: true });
+    this.boxAt(x, y, z, w, 0.16, d, 'lampPanel', { ghost: true, noMinimap: true });
+    // A slim housing so the fixture reads as built into the ceiling.
+    this.boxAt(x, y + 0.12, z, w * 1.1, 0.12, d * 1.1, 'trim', { ghost: true, noMinimap: true });
     this.light('point', x, y - 0.4, z, color, intensity, range);
   }
 

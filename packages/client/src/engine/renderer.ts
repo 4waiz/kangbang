@@ -15,11 +15,13 @@ import {
   ACESFilmicToneMapping,
   Color,
   DirectionalLight,
+  EquirectangularReflectionMapping,
   Fog,
   HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   PCFSoftShadowMap,
+  PMREMGenerator,
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
@@ -27,6 +29,7 @@ import {
   SphereGeometry,
   Vector3,
   WebGLRenderer,
+  type Texture,
 } from 'three';
 import type { MapAmbience } from '@neon/shared';
 import { store } from '../state/store.js';
@@ -165,6 +168,43 @@ export class Renderer {
     this.viewCamera.updateProjectionMatrix();
   }
 
+  /**
+   * Build an environment map from the map's sky.
+   *
+   * This is not optional polish: the level's materials are metallic (hull is
+   * 0.72, trim 0.85), and a metallic PBR material with no environment to
+   * reflect renders essentially black no matter how many lights are in the
+   * scene. Convolving the skybox into a PMREM gives every metal surface
+   * something to reflect and is what makes the level readable.
+   */
+  private buildEnvironment(skyKind: string): void {
+    const quality = store.str('textureQuality') as TextureQuality;
+    const source = skyTexture(skyKind, quality);
+    source.mapping = EquirectangularReflectionMapping;
+    const pmrem = new PMREMGenerator(this.renderer);
+    pmrem.compileEquirectangularShader();
+    const previous = this.environment;
+    try {
+      const target = pmrem.fromEquirectangular(source);
+      this.environment = target.texture;
+      this.scene.environment = this.environment;
+      // Keep the reflection contribution restrained: at 1.0 the metal reads as
+      // chrome and the level loses its matte industrial character.
+      this.scene.environmentIntensity = 0.55;
+      this.viewScene.environment = this.environment;
+      this.viewScene.environmentIntensity = 0.7;
+    } catch {
+      // If PMREM fails (very old GL), fall back to lights only and raise the
+      // hemisphere so the scene is still legible.
+      this.hemi.intensity = Math.max(this.hemi.intensity, 1.6);
+    } finally {
+      pmrem.dispose();
+      previous?.dispose();
+    }
+  }
+
+  private environment: Texture | null = null;
+
   /** Apply a map's lighting + fog + skybox. */
   applyAmbience(a: MapAmbience): void {
     this.hemi.color.setHex(a.hemiSky);
@@ -210,6 +250,8 @@ export class Renderer {
     geo.boundingSphere = new Sphere(new Vector3(), 1e6);
     this.scene.add(mesh);
     this.sky = mesh;
+
+    this.buildEnvironment(a.skybox);
   }
 
   // -- frame --------------------------------------------------------------

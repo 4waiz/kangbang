@@ -99,6 +99,16 @@
   box-sizing: border-box;
 }
 
+/*
+ * The UA rule for [hidden] is `display: none` at UA specificity, so ANY author
+ * rule that sets `display` on the same element wins and the element stays
+ * visible. Most HUD panels set display (grid/flex), so without this the death
+ * screen, scope overlay and streak counter would all be permanently on screen.
+ */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;

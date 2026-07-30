@@ -113,6 +113,17 @@ const tmpV2 = new Vector3();
 const tmpDir = { x: 0, y: 0, z: 0 };
 const tmpEuler = new Euler(0, 0, 0, 'YXZ');
 
+/**
+ * The shared simulation uses plain `{x,y,z}` objects, not three.js Vector3s, so
+ * that it can run on the server with no renderer dependency. This assigns into
+ * one without allocating.
+ */
+function setVec(v: { x: number; y: number; z: number }, x: number, y: number, z: number): void {
+  v.x = x;
+  v.y = y;
+  v.z = z;
+}
+
 export class GameSession {
   // -- scene ------------------------------------------------------------
   private mapMeshes: MapMeshes | null = null;
@@ -669,8 +680,8 @@ export class GameSession {
         const error = Math.hypot(dx, dy, dz);
         if (error > POSITION_TELEPORT_LIMIT) {
           // Teleport, respawn or a hard server correction: accept it outright.
-          this.move.pos.set(s.x, s.y, s.z);
-          this.move.vel.set(s.vx, s.vy, s.vz);
+          setVec(this.move.pos, s.x, s.y, s.z);
+          setVec(this.move.vel, s.vx, s.vy, s.vz);
           this.correction.set(0, 0, 0);
           this.hardCorrections++;
           this.replayPending();
@@ -678,8 +689,8 @@ export class GameSession {
           // Rewind to the authoritative state and replay unacked inputs, then
           // carry the residual as a smooth visual offset.
           const before = tmpV.copy(this.move.pos);
-          this.move.pos.set(s.x, s.y, s.z);
-          this.move.vel.set(s.vx, s.vy, s.vz);
+          setVec(this.move.pos, s.x, s.y, s.z);
+          setVec(this.move.vel, s.vx, s.vy, s.vz);
           this.replayPending();
           this.correction.add(before.sub(this.move.pos));
           this.softCorrections++;
@@ -687,8 +698,8 @@ export class GameSession {
         // Below the threshold we trust the prediction entirely: correcting
         // sub-centimetre drift every 50ms is what makes movement feel mushy.
       } else if (!this.alive) {
-        this.move.pos.set(s.x, s.y, s.z);
-        this.move.vel.set(0, 0, 0);
+        setVec(this.move.pos, s.x, s.y, s.z);
+        setVec(this.move.vel, 0, 0, 0);
       }
       // Drop acknowledged history.
       for (const seq of this.predictionHistory.keys()) {
@@ -792,8 +803,8 @@ export class GameSession {
       }
       case EvType.Spawn: {
         if (ev.a === this.selfId) {
-          this.move.pos.set(ev.x, ev.y, ev.z);
-          this.move.vel.set(0, 0, 0);
+          setVec(this.move.pos, ev.x, ev.y, ev.z);
+          setVec(this.move.vel, 0, 0, 0);
           this.camYaw = ev.u;
           this.camPitch = 0;
           this.correction.set(0, 0, 0);
@@ -807,7 +818,7 @@ export class GameSession {
         const radius = ev.i / 10;
         this.fx.explosion(at.clone(), radius);
         audio.explosion(radius, { x: ev.x, y: ev.y, z: ev.z });
-        const dist = this.move.pos.distanceTo(at);
+        const dist = Math.hypot(this.move.pos.x - ev.x, this.move.pos.y - ev.y, this.move.pos.z - ev.z);
         if (dist < radius * 3) this.addShake(clamp(1 - dist / (radius * 3), 0, 1) * 0.9);
         break;
       }
