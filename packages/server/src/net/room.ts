@@ -458,12 +458,46 @@ export class Room {
     }
   }
 
+  /**
+   * True when at least one human is connected and every connected, non-
+   * spectating human has pressed READY. Bots are always ready, so a solo player
+   * against bots can start the moment they say so.
+   */
+  private allHumansReady(): boolean {
+    let humans = 0;
+    let ready = 0;
+    for (const rec of this.clients.values()) {
+      if (rec.disconnectedAtMs > 0) continue;
+      const p = this.match.getPlayer(rec.entityId);
+      if (!p || p.spectating) continue;
+      humans++;
+      if (p.ready) ready++;
+    }
+    return humans > 0 && ready === humans;
+  }
+
+  /** Ready counts for the lobby UI: [ready, total connected humans]. */
+  readyCount(): [number, number] {
+    let humans = 0;
+    let ready = 0;
+    for (const rec of this.clients.values()) {
+      if (rec.disconnectedAtMs > 0) continue;
+      const p = this.match.getPlayer(rec.entityId);
+      if (!p || p.spectating) continue;
+      humans++;
+      if (p.ready) ready++;
+    }
+    return [ready, humans];
+  }
+
   private advancePhase(dt: number, nowMs: number): void {
     const m = this.match;
     switch (m.phase) {
       case MatchPhase.Warmup: {
         const active = m.activePlayerCount();
-        if (active >= MIN_PLAYERS_TO_START && m.timeRemaining <= 0) {
+        // Warmup normally runs its full length so late joiners get a moment to
+        // load in, but everyone pressing READY skips the rest of it.
+        if (active >= MIN_PLAYERS_TO_START && (m.timeRemaining <= 0 || this.allHumansReady())) {
           m.phase = MatchPhase.Countdown;
           this.countdown = COUNTDOWN_SECONDS;
           this.pushNotice('MATCH STARTING');

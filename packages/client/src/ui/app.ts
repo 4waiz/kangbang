@@ -125,6 +125,8 @@ export class App {
   private pendingJoin: { mode?: string; map?: string; code?: string; roomId?: string; create?: boolean; config?: Record<string, unknown> } | null =
     null;
   private roomSummary: Record<string, unknown> | null = null;
+  /** Local READY state during warmup; the server starts early once all are ready. */
+  private locallyReady = false;
   private bootTipTimer = 0;
   private capturingBinding: string | null = null;
 
@@ -1860,6 +1862,7 @@ export class App {
     this.connection.setLoadout(loadout);
     this.inMatch = true;
     this.results = null;
+    this.locallyReady = false;
     this.session.start();
     this.closeScreen();
     audio.stopMenuMusic();
@@ -2011,6 +2014,16 @@ export class App {
       button('CHANGE CLASS', () => this.showClassSelect(true), { class: 'btn--block' }),
       button('EDIT LOADOUT', () => this.showLoadout(true), { class: 'btn--block' }),
       el('hr', { class: 'rule' }),
+      this.matchState?.phase === 'warmup'
+        ? el(
+            'div',
+            { class: 'col' },
+            eyebrow('START'),
+            this.readyButton(() => this.showLobby()),
+            el('div', { class: 'faint', style: { fontSize: '12px' } }, 'Warmup ends early once everyone is ready.'),
+            el('hr', { class: 'rule' }),
+          )
+        : null,
       teams === 2
         ? el(
             'div',
@@ -2054,6 +2067,26 @@ export class App {
     );
   }
 
+  /**
+   * Warmup READY toggle. The server skips the rest of warmup once every
+   * connected human is ready, so this is the "start now" control.
+   */
+  private readyButton(refresh: () => void): HTMLElement {
+    const ready = this.roster.filter((p) => p.ready && !p.bot).length;
+    const humans = Math.max(1, this.roster.filter((p) => !p.bot).length);
+    const label = this.locallyReady ? `CANCEL READY (${ready}/${humans})` : `READY UP (${ready}/${humans})`;
+    return button(
+      label,
+      () => {
+        this.locallyReady = !this.locallyReady;
+        this.connection.setReady(this.locallyReady);
+        this.hud.pushNotice(this.locallyReady ? 'READY' : 'NOT READY', true);
+        refresh();
+      },
+      { class: this.locallyReady ? 'btn--block btn--primary' : 'btn--block' },
+    );
+  }
+
   private showPause(): void {
     this.setScreen(
       'pause',
@@ -2072,6 +2105,8 @@ export class App {
               'div',
               { class: 'col' },
               button('RESUME', () => this.closeScreen(), { class: 'btn--primary btn--lg btn--block', hint: 'ESC' }),
+              // Only meaningful before the match starts, so it is not shown mid-game.
+              ...(this.matchState?.phase === 'warmup' ? [this.readyButton(() => this.showPause())] : []),
               button('SCOREBOARD', () => this.showScoreboard(), { class: 'btn--block' }),
               button('CLASS & LOADOUT', () => this.showClassSelect(true), { class: 'btn--block' }),
               button('SETTINGS', () => this.showSettings(), { class: 'btn--block' }),

@@ -254,28 +254,30 @@ interface UnlockCtxLike {
  * highest mastery across all weapons, which is how the skin ladder works.
  */
 function cosmeticUnlocked(req: NonNullable<(typeof COSMETICS)[string]['unlock']>, ctx: UnlockCtxLike): boolean {
+  // Achievement unlocks carry no threshold; the others default to "any amount".
+  const need = req.value ?? 0;
   switch (req.kind) {
     case 'level':
-      return ctx.level >= req.value;
+      return ctx.level >= need;
     case 'weaponMastery': {
       if (req.target === 'any') {
         const best = Math.max(0, ...Object.values(ctx.weaponMastery));
-        return best >= req.value;
+        return best >= need;
       }
-      return (ctx.weaponMastery[req.target ?? ''] ?? 0) >= req.value;
+      return (ctx.weaponMastery[req.target ?? ''] ?? 0) >= need;
     }
     case 'classMastery': {
       if (req.target === 'any') {
         const best = Math.max(0, ...Object.values(ctx.classMastery));
-        return best >= req.value;
+        return best >= need;
       }
-      return (ctx.classMastery[req.target ?? ''] ?? 0) >= req.value;
+      return (ctx.classMastery[req.target ?? ''] ?? 0) >= need;
     }
     case 'achievement':
       return ctx.achievements.has(req.target ?? '');
     case 'stat': {
       const key = (req.target ?? '') as keyof PlayerProfile['totals'];
-      return (ctx.totals[key] ?? 0) >= req.value;
+      return (ctx.totals[key] ?? 0) >= need;
     }
     default:
       return false;

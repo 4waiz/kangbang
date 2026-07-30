@@ -62,8 +62,15 @@ export function newGuestId(): string {
   return `g_${randomBytes(12).toString('base64url')}`;
 }
 
-/** Read a bearer token from the Authorization header or a `token` query param. */
+/**
+ * Read a bearer token from the Authorization header or a `token` query param.
+ *
+ * The scheme name is matched case-insensitively, as RFC 7235 requires: a client
+ * sending `bearer <token>` must not be silently downgraded to anonymous.
+ */
 export function extractToken(authHeader: string | undefined, queryToken: string | null): string {
-  if (authHeader && authHeader.startsWith('Bearer ')) return authHeader.slice(7).trim();
+  if (authHeader && authHeader.length > 7 && authHeader.slice(0, 7).toLowerCase() === 'bearer ') {
+    return authHeader.slice(7).trim();
+  }
   return queryToken ?? '';
 }

@@ -11,6 +11,7 @@
  * account; wiring real auth later means issuing the same ids from a login flow.
  */
 
+import { DEFAULT_COSMETICS, defaultUnlockedCosmetics } from '@neon/shared';
 import type { CareerTotals, StatCounter } from '@neon/shared';
 
 export interface PlayerProfile {
@@ -163,7 +164,9 @@ export function newProfile(id: string, name: string, guest: boolean, now: number
     settings: {},
     bindings: {},
     loadouts: {},
-    cosmetics: { unlocked: [], equipped: {} },
+    // The free cosmetics are owned from the start, so a fresh profile is already
+    // internally consistent: everything it has equipped, it also owns.
+    cosmetics: { unlocked: defaultUnlockedCosmetics(), equipped: { ...DEFAULT_COSMETICS } },
     totals: emptyTotals(),
     counters: {},
     weaponStats: {},

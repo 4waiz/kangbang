@@ -11,8 +11,8 @@
  */
 
 import { mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
 import { levelFromXp } from '@neon/shared';
 import {
   emptyTotals,
@@ -30,6 +30,43 @@ import {
 
 interface Row {
   [key: string]: unknown;
+}
+
+/**
+ * Structural view of the slice of `node:sqlite` we use.
+ *
+ * Declared locally rather than imported so the module can be loaded (for its
+ * types and for `db/index.ts`'s driver table) on a runtime that does not expose
+ * `node:sqlite` yet. The real module is pulled in lazily by `init()` through an
+ * indirect specifier, which also keeps bundlers from trying to resolve it.
+ */
+interface SqliteStatement {
+  all(...params: unknown[]): unknown[];
+  get(...params: unknown[]): unknown;
+  run(...params: unknown[]): unknown;
+}
+interface SqliteHandle {
+  exec(sql: string): void;
+  prepare(sql: string): SqliteStatement;
+  close(): void;
+}
+type SqliteModule = { DatabaseSync: new (path: string) => SqliteHandle };
+
+/**
+ * Reach the real `node:sqlite` builtin at runtime.
+ *
+ * A static `import` would make every bundler in the chain (Vite for the tests,
+ * esbuild for the server bundle) try to resolve `node:sqlite` at build time, and
+ * they fail because it is not in their builtin tables yet. `getBuiltinModule`
+ * asks Node directly and cannot be statically rewritten; `createRequire` is the
+ * fallback for runtimes that predate it.
+ */
+function loadSqlite(): SqliteModule {
+  const proc = process as NodeJS.Process & { getBuiltinModule?: (id: string) => unknown };
+  if (typeof proc.getBuiltinModule === 'function') {
+    return proc.getBuiltinModule('node:sqlite') as SqliteModule;
+  }
+  return createRequire(import.meta.url)('node:sqlite') as SqliteModule;
 }
 
 const SCHEMA = `
@@ -111,13 +148,14 @@ function parseJson<T>(raw: unknown, fallback: T): T {
 
 export class SqliteDatabase implements Database {
   readonly driver = 'sqlite';
-  private db!: DatabaseSync;
+  private db!: SqliteHandle;
 
   constructor(private path: string) {}
 
   async init(): Promise<void> {
     const full = isAbsolute(this.path) ? this.path : resolve(process.cwd(), this.path);
     if (full !== ':memory:') mkdirSync(dirname(full), { recursive: true });
+    const { DatabaseSync } = loadSqlite();
     this.db = new DatabaseSync(full);
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA synchronous = NORMAL;');

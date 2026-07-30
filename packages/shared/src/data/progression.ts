@@ -238,7 +238,8 @@ export interface UnlockRequirement {
   kind: 'level' | 'weaponMastery' | 'classMastery' | 'achievement' | 'stat';
   /** Weapon/class/achievement id, or a CareerTotals key for 'stat'. */
   target?: string;
-  value: number;
+  /** Threshold to reach. Omitted for `achievement`, which is pass/fail. */
+  value?: number;
 }
 
 export interface UnlockContext {
@@ -251,18 +252,21 @@ export interface UnlockContext {
 
 export function isUnlocked(req: UnlockRequirement | undefined, ctx: UnlockContext): boolean {
   if (!req) return true;
+  // A threshold-less requirement of a threshold kind means "any amount", so 0
+  // is the safe default rather than treating it as unreachable.
+  const need = req.value ?? 0;
   switch (req.kind) {
     case 'level':
-      return ctx.level >= req.value;
+      return ctx.level >= need;
     case 'weaponMastery':
-      return (ctx.weaponMastery[req.target ?? ''] ?? 0) >= req.value;
+      return (ctx.weaponMastery[req.target ?? ''] ?? 0) >= need;
     case 'classMastery':
-      return (ctx.classMastery[req.target ?? ''] ?? 0) >= req.value;
+      return (ctx.classMastery[req.target ?? ''] ?? 0) >= need;
     case 'achievement':
       return ctx.achievements.has(req.target ?? '');
     case 'stat': {
       const key = (req.target ?? '') as keyof CareerTotals;
-      return (ctx.totals[key] ?? 0) >= req.value;
+      return (ctx.totals[key] ?? 0) >= need;
     }
     default:
       return false;

@@ -98,15 +98,21 @@ export abstract class ModeRules {
     return this.def.respawnEnabled && match.phase !== MatchPhase.Ended;
   }
 
-  /** Winning team (1/2), 0 for a draw, or -1 when the match continues. */
+  /**
+   * Winning team (1/2), 0 for a draw, or -1 when the match continues.
+   *
+   * Reads `match.effectiveScoreLimit`, not `this.def.scoreLimit`, so a custom
+   * room's score limit is actually honoured.
+   */
   checkWin(match: Match): number {
+    const limit = match.effectiveScoreLimit;
     if (this.def.teams === 2) {
-      if (match.teamScores[0] >= this.def.scoreLimit) return Team.Ion;
-      if (match.teamScores[1] >= this.def.scoreLimit) return Team.Ember;
+      if (match.teamScores[0] >= limit) return Team.Ion;
+      if (match.teamScores[1] >= limit) return Team.Ember;
     } else {
       for (const p of match.playerList()) {
         if (p.spectating) continue;
-        if (p.kills >= this.def.scoreLimit) return Team.None;
+        if (p.kills >= limit) return Team.None;
       }
     }
     return -1;
