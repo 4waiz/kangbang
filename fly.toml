@@ -10,7 +10,7 @@
 #
 #   fly auth login
 #   fly launch --no-deploy --copy-config --name kang-bang
-#   fly volumes create kang_data --size 1 --region lhr
+#   fly volumes create kang_data --size 1 --region bom
 #   fly secrets set SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
 #   fly deploy
 #
@@ -20,7 +20,11 @@
 # ---------------------------------------------------------------------------
 
 app = "kang-bang"
-primary_region = "lhr"
+# Mumbai: nearest region to the Gulf at roughly 30 ms, against ~110 ms for
+# Frankfurt. For a 60 Hz shooter that difference is felt, so region choice is a
+# gameplay decision rather than an ops one. Change it to whichever region is
+# closest to your players.
+primary_region = "bom"
 
 [build]
   dockerfile = "docker/allinone.Dockerfile"
