@@ -127,7 +127,7 @@ async function main() {
   await page.evaluateOnNewDocument(() => {
     try {
       localStorage.setItem(
-        'neon.settings.v1',
+        'kang.settings.v1',
         JSON.stringify({
           resolutionScale: 0.5,
           shadowQuality: 'off',

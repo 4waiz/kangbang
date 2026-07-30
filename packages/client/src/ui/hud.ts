@@ -20,7 +20,7 @@ import {
   type MapDef,
   type MatchStatePayload,
   type PlayerPublicState,
-} from '@neon/shared';
+} from '@kang/shared';
 import { store } from '../state/store.js';
 import type { HudSnapshot } from '../game/session.js';
 import { weaponIcon } from './icons.js';
@@ -417,7 +417,7 @@ export class Hud {
       if (hud.hitMarker > 0) this.drawHitMarker(ctx, cx, cy, hud.hitMarker, hud.hitMarkerHeadshot);
       this.drawDamageIndicators(ctx, cx, cy, hud.damageDirections);
     }
-    this.drawMinimap(ctx, cw, ch);
+    this.drawMinimap(ctx, cw);
     ctx.restore();
   }
 
@@ -678,7 +678,7 @@ export class Hud {
     return canvas;
   }
 
-  private drawMinimap(ctx: CanvasRenderingContext2D, cw: number, ch: number): void {
+  private drawMinimap(ctx: CanvasRenderingContext2D, cw: number): void {
     const def = this.mapDef;
     if (!def) return;
     const size = store.num('minimapSize');

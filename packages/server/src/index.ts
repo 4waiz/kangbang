@@ -1,11 +1,11 @@
 /**
- * NEON STRIKE server entry point.
+ * KANG BANG server entry point.
  *
  * Boots persistence, starts the HTTP + WebSocket transport, and installs a
  * graceful shutdown so in-flight match results are still written.
  */
 
-import { BUILD_INFO } from '@neon/shared';
+import { BUILD_INFO } from '@kang/shared';
 import { config } from './config.js';
 import { createDatabase } from './db/index.js';
 import { log } from './logger.js';

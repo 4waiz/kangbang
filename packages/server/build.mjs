@@ -1,7 +1,7 @@
 /**
  * Production server bundle.
  *
- * esbuild rather than tsc: it resolves the TypeScript source of @neon/shared
+ * esbuild rather than tsc: it resolves the TypeScript source of @kang/shared
  * directly (no separate build step for the shared package) and emits a single
  * ESM file, which keeps the runtime image tiny and startup fast.
  */
@@ -33,5 +33,9 @@ const result = await build({
   metafile: true,
 });
 
-const bytes = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
-console.log(`server bundle: ${(bytes / 1024).toFixed(1)} KB`);
+// Report the shipped bundle only - counting the source map alongside it would
+// roughly triple the number and make the figure useless for tracking size.
+const code = Object.entries(result.metafile.outputs)
+  .filter(([file]) => !file.endsWith('.map'))
+  .reduce((sum, [, o]) => sum + o.bytes, 0);
+console.log(`server bundle: ${(code / 1024).toFixed(1)} KB (excluding source map)`);

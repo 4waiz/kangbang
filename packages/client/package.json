@@ -1,9 +1,9 @@
 {
-  "name": "@neon/client",
+  "name": "@kang/client",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Browser client for NEON STRIKE",
+  "description": "Browser client for KANG BANG",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@neon/shared": "*",
+    "@kang/shared": "*",
     "three": "^0.171.0"
   },
   "devDependencies": {

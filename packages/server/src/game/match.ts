@@ -64,7 +64,7 @@ import {
   type ObjectiveState,
   type PickupDef,
   type WireEvent,
-} from '@neon/shared';
+} from '@kang/shared';
 import { config } from '../config.js';
 import { createModeRules, type ModeRules, type ObjectiveRuntime } from './modes.js';
 import { SLOT_MELEE, SLOT_PRIMARY, ServerPlayer } from './player.js';

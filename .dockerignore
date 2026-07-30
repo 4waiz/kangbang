@@ -1,0 +1,31 @@
+# Keep the build context small and free of anything secret or machine-local.
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+data
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets must never enter an image layer.
+.env
+.env.*
+!.env.example
+
+# Blender sources and the portable Blender install are only needed to
+# regenerate assets; the exported GLBs under packages/client/public ship
+# in the repository, so the images do not need any of this.
+assets/source
+assets/blender
+tools/blender
+
+# Local tooling output.
+coverage
+*.log
+screenshots
+.vscode
+.idea
+.DS_Store
+Thumbs.db

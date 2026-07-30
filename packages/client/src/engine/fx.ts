@@ -31,11 +31,10 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
-import { clamp } from '@neon/shared';
+import { clamp } from '@kang/shared';
 import { store } from '../state/store.js';
 import { decalTexture, ringTexture, sparkTexture } from './textures.js';
 
-const UP = new Vector3(0, 1, 0);
 const tmpV = new Vector3();
 const tmpV2 = new Vector3();
 const tmpQ = new Quaternion();

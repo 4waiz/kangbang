@@ -11,8 +11,8 @@
  * account; wiring real auth later means issuing the same ids from a login flow.
  */
 
-import { DEFAULT_COSMETICS, defaultUnlockedCosmetics } from '@neon/shared';
-import type { CareerTotals, StatCounter } from '@neon/shared';
+import { DEFAULT_COSMETICS, defaultUnlockedCosmetics } from '@kang/shared';
+import type { CareerTotals, StatCounter } from '@kang/shared';
 
 export interface PlayerProfile {
   id: string;

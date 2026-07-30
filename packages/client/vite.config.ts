@@ -4,14 +4,14 @@ import { defineConfig } from 'vite';
 /**
  * Client build.
  *
- * `@neon/shared` is aliased to its TypeScript source so the simulation code the
+ * `@kang/shared` is aliased to its TypeScript source so the simulation code the
  * server runs is the exact same code the client predicts with - no compiled
  * artefact in between that could drift.
  */
 export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
-      '@neon/shared': resolve(__dirname, '../shared/src/index.ts'),
+      '@kang/shared': resolve(__dirname, '../shared/src/index.ts'),
     },
   },
   server: {

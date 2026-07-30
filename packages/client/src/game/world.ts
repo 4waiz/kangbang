@@ -7,7 +7,7 @@
  */
 
 import { AdditiveBlending, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Scene, Vector3 } from 'three';
-import { TEAM_COLORS, type MapDef, type ObjectiveState, type PickupDef } from '@neon/shared';
+import { TEAM_COLORS, type MapDef, type ObjectiveState, type PickupDef } from '@kang/shared';
 import { assets } from '../engine/assets.js';
 import { ringTexture } from '../engine/textures.js';
 import { store } from '../state/store.js';

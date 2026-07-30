@@ -119,7 +119,7 @@ function runBlender(cmd, script, only) {
       const text = d.toString();
       stdout += text;
       for (const line of text.split('\n')) {
-        if (line.includes('[neon]')) console.log('  ' + line.replace(/^.*\[neon\]\s*/, ''));
+        if (line.includes('[kang]')) console.log('  ' + line.replace(/^.*\[neon\]\s*/, ''));
       }
     });
     child.stderr.on('data', (d) => {
@@ -205,7 +205,7 @@ function verify(manifest) {
 }
 
 async function main() {
-  console.log('NEON STRIKE asset build');
+  console.log('KANG BANG asset build');
 
   if (checkOnly) {
     const manifest = writeManifest();

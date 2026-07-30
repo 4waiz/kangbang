@@ -13,7 +13,7 @@
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { levelFromXp } from '@neon/shared';
+import { levelFromXp } from '@kang/shared';
 import {
   emptyTotals,
   metricValue,

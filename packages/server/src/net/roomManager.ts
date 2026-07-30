@@ -15,7 +15,7 @@ import {
   quickPlayModes,
   sanitiseName,
   type CustomMatchConfig,
-} from '@neon/shared';
+} from '@kang/shared';
 import { config } from '../config.js';
 import type { Database } from '../db/index.js';
 import { log } from '../logger.js';

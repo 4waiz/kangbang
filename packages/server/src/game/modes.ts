@@ -18,7 +18,7 @@ import {
   type MatchPhaseId,
   type ModeDef,
   type ObjectiveState,
-} from '@neon/shared';
+} from '@kang/shared';
 import type { Match } from './match.js';
 import type { ServerPlayer } from './player.js';
 

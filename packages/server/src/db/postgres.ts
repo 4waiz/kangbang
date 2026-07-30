@@ -7,7 +7,7 @@
  * one exactly, so a dev database can be dumped and loaded with minimal fuss.
  */
 
-import { levelFromXp } from '@neon/shared';
+import { levelFromXp } from '@kang/shared';
 import {
   metricValue,
   meetsLeaderboardMinimum,
@@ -125,7 +125,7 @@ export class PostgresDatabase implements Database {
       pgModule = (await import(specifier)) as unknown as typeof pgModule;
     } catch {
       throw new Error(
-        'DB_DRIVER=postgres requires the `pg` package. Install it with: npm i pg -w @neon/server',
+        'DB_DRIVER=postgres requires the `pg` package. Install it with: npm i pg -w @kang/server',
       );
     }
     this.pool = new pgModule.Pool({ connectionString: this.url, max: 10 });

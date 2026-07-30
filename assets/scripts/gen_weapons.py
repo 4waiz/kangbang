@@ -1,5 +1,5 @@
 """
-NEON STRIKE - weapon model generator.
+KANG BANG - weapon model generator.
 
 Builds all ten weapons plus the first-person arms. Each weapon exports twice:
 
@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-import lib_neon as N  # noqa: E402
+import lib_kang as N  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

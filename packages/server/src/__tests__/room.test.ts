@@ -20,7 +20,7 @@ import {
   decodeSnapshot,
   sanitiseText,
   validateJsonMessage,
-} from '@neon/shared';
+} from '@kang/shared';
 import { Room, generateRoomCode, type Connection, type RoomConfig } from '../net/room.js';
 import { MemoryDatabase } from '../db/memory.js';
 import { config } from '../config.js';

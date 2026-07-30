@@ -1,8 +1,8 @@
 {
-  "name": "neon-strike",
+  "name": "kang-bang",
   "version": "1.0.0",
   "private": true,
-  "description": "NEON STRIKE - an original browser-based competitive sci-fi FPS",
+  "description": "KANG BANG - an original browser-based competitive sci-fi FPS",
   "license": "MIT",
   "workspaces": [
     "packages/shared",
@@ -14,11 +14,11 @@
   },
   "scripts": {
     "dev": "concurrently -n server,client -c magenta,cyan \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm run dev -w @neon/server",
-    "dev:client": "npm run dev -w @neon/client",
-    "build": "npm run build -w @neon/server && npm run build -w @neon/client",
-    "build:server": "npm run build -w @neon/server",
-    "build:client": "npm run build -w @neon/client",
+    "dev:server": "npm run dev -w @kang/server",
+    "dev:client": "npm run dev -w @kang/client",
+    "build": "npm run build -w @kang/server && npm run build -w @kang/client",
+    "build:server": "npm run build -w @kang/server",
+    "build:client": "npm run build -w @kang/client",
     "start": "node packages/server/dist/index.mjs",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p packages/server --noEmit && tsc -p packages/client --noEmit",
     "lint": "eslint \"packages/*/src/**/*.ts\"",

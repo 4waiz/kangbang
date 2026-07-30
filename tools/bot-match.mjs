@@ -213,6 +213,7 @@ class TestClient {
     this.errors = [];
     this.positions = [];
     this.maxSpeedSeen = 0;
+    this.maxSpeedContext = null;
     this.phase = '';
     this.roomInfo = null;
     this.resultsPayload = null;
@@ -336,7 +337,16 @@ class TestClient {
         this.movedDistance += Math.hypot(snap.self.x - prev.x, snap.self.z - prev.z);
       }
       const speed = Math.hypot(snap.self.vx, snap.self.vz);
-      if (speed > this.maxSpeedSeen) this.maxSpeedSeen = speed;
+      if (speed > this.maxSpeedSeen) {
+        this.maxSpeedSeen = speed;
+        // Capture the context so an unexpected peak can be diagnosed rather
+        // than merely reported: air/ground and slide state explain most of it.
+        this.maxSpeedContext = {
+          y: +snap.self.y.toFixed(2),
+          vy: +snap.self.vy.toFixed(2),
+          flags: snap.self.flags,
+        };
+      }
       if (snap.self.health > 0) this.aliveTicks++;
       if (snap.self.ammo <= 2) this.ammoLow = true;
       this.lastSelf = snap.self;
@@ -459,7 +469,7 @@ function mulberry(seed) {
 async function main() {
   const health = await fetch(`${URL_BASE}/api/health`).then((r) => r.json()).catch(() => null);
   if (!health || !health.ok) {
-    console.error(`Cannot reach a NEON STRIKE server at ${URL_BASE}. Start it with: npm run dev:server`);
+    console.error(`Cannot reach a KANG BANG server at ${URL_BASE}. Start it with: npm run dev:server`);
     process.exit(2);
   }
   if (!AS_JSON) {
@@ -514,6 +524,7 @@ async function main() {
       entitiesSeen: c.entityCountSeen,
       distanceMoved: +c.movedDistance.toFixed(1),
       maxSpeed: +c.maxSpeedSeen.toFixed(2),
+      maxSpeedContext: c.maxSpeedContext,
       finalHealth: c.lastSelf ? c.lastSelf.health : null,
       finalAmmo: c.lastSelf ? c.lastSelf.ammo : null,
       reloaded: c.reloadSeen,
@@ -545,7 +556,9 @@ function printReport(report) {
     console.log(
       `${c.name.padEnd(9)} id=${String(c.entityId).padStart(3)} phase=${c.phase.padEnd(9)} ` +
         `snaps=${String(c.snapshots).padStart(4)} (${c.snapshotRate}/s) self=${String(c.selfStates).padStart(4)} ` +
-        `moved=${String(c.distanceMoved).padStart(6)}m peak=${c.maxSpeed}m/s`,
+        `moved=${String(c.distanceMoved).padStart(6)}m peak=${c.maxSpeed}m/s${
+          c.maxSpeedContext ? ` @y=${c.maxSpeedContext.y} vy=${c.maxSpeedContext.vy} flags=${c.maxSpeedContext.flags}` : ''
+        }`,
     );
     console.log(
       `          shots=${String(c.shotsRequested).padStart(4)} serverShots=${String(c.serverShotEvents).padStart(4)} ` +

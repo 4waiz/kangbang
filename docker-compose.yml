@@ -1,0 +1,98 @@
+# ---------------------------------------------------------------------------
+# KANG BANG - full stack.
+#
+#   docker compose up --build      # play at http://localhost:8080
+#   docker compose --profile postgres up --build   # with Postgres persistence
+#
+# The default profile runs SQLite on a named volume: no database container, no
+# credentials, progression still survives restarts. Switch to the `postgres`
+# profile when you want the production persistence path.
+# ---------------------------------------------------------------------------
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 2567
+      HOST: 0.0.0.0
+      # Behind the nginx proxy the browser origin is the client container's, so
+      # allow it explicitly rather than falling back to `*`.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080,http://127.0.0.1:8080}
+      # REQUIRED: the server refuses to start in production without this.
+      # Set it in a .env file next to this compose file, or export it.
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET - generate with "node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\""}
+      DB_DRIVER: ${DB_DRIVER:-sqlite}
+      SQLITE_PATH: /app/data/kangbang.db
+      DATABASE_URL: ${DATABASE_URL:-}
+      TICK_RATE: ${TICK_RATE:-60}
+      SNAPSHOT_RATE: ${SNAPSHOT_RATE:-20}
+      MAX_ROOMS: ${MAX_ROOMS:-64}
+      BOT_FILL: ${BOT_FILL:-true}
+      BOT_FILL_TARGET: ${BOT_FILL_TARGET:-8}
+      BOT_DIFFICULTY: ${BOT_DIFFICULTY:-normal}
+      MOVE_TOLERANCE: ${MOVE_TOLERANCE:-1.05}
+      MSG_RATE_LIMIT: ${MSG_RATE_LIMIT:-180}
+      LOG_SUSPICIOUS: ${LOG_SUSPICIOUS:-true}
+    volumes:
+      - kang-data:/app/data
+    # Not published: only the client container needs to reach it. Uncomment to
+    # connect a local dev client to a containerised server.
+    # ports:
+    #   - "2567:2567"
+    networks:
+      - kang
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+      args:
+        VITE_BUILD_LABEL: ${VITE_BUILD_LABEL:-docker}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - kang
+
+  # Only started with `--profile postgres`, for exercising the Postgres
+  # persistence path on a laptop. Set:
+  #   DB_DRIVER=postgres
+  #   DATABASE_URL=postgres://kang:kang@postgres:5432/kangbang
+  #
+  # The password below defaults to a throwaway value on purpose: compose
+  # interpolates every service regardless of profile, so a `?required` marker
+  # here would break the default SQLite stack too. This container is never
+  # published outside the compose network - a real deployment points
+  # DATABASE_URL at a managed database and does not run this service at all.
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kang}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kang}
+      POSTGRES_DB: ${POSTGRES_DB:-kangbang}
+    volumes:
+      - kang-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kang} -d ${POSTGRES_DB:-kangbang}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kang
+
+volumes:
+  kang-data:
+  kang-pg:
+
+networks:
+  kang:
+    driver: bridge

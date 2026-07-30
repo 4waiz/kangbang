@@ -26,16 +26,16 @@ import {
   type LoadoutSelection,
   type Settings,
   type SettingsValue,
-} from '@neon/shared';
+} from '@kang/shared';
 
-const LS_SETTINGS = 'neon.settings.v1';
-const LS_BINDINGS = 'neon.bindings.v1';
-const LS_TOKEN = 'neon.token.v1';
-const LS_GUEST_ID = 'neon.guestId.v1';
-const LS_NAME = 'neon.name.v1';
-const LS_LOADOUTS = 'neon.loadouts.v1';
-const LS_COSMETICS = 'neon.cosmetics.v1';
-const LS_LAST = 'neon.last.v1';
+const LS_SETTINGS = 'kang.settings.v1';
+const LS_BINDINGS = 'kang.bindings.v1';
+const LS_TOKEN = 'kang.token.v1';
+const LS_GUEST_ID = 'kang.guestId.v1';
+const LS_NAME = 'kang.name.v1';
+const LS_LOADOUTS = 'kang.loadouts.v1';
+const LS_COSMETICS = 'kang.cosmetics.v1';
+const LS_LAST = 'kang.last.v1';
 
 export interface ProfileView {
   id: string;

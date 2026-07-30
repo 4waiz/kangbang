@@ -28,7 +28,7 @@ import {
   type MatchStatePayload,
   type PlayerPublicState,
   type Snapshot,
-} from '@neon/shared';
+} from '@kang/shared';
 import { store } from '../state/store.js';
 import { WS_URL } from './api.js';
 

@@ -1,5 +1,5 @@
 """
-NEON STRIKE - character model generator.
+KANG BANG - character model generator.
 
 Six classes, each with a distinct silhouette so a player can be identified from
 across the map before their team colour is even readable:
@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-import lib_neon as N  # noqa: E402
+import lib_kang as N  # noqa: E402
 
 
 # Characters are built standing on the ground plane (z = 0) and are 1.8m tall by

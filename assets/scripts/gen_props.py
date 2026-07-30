@@ -1,5 +1,5 @@
 """
-NEON STRIKE - prop, pickup, objective and deployable generator.
+KANG BANG - prop, pickup, objective and deployable generator.
 
 These are the models referenced by MapDef.props and by the objective/pickup
 systems. Each is small (30-250 triangles) and instanced heavily by the client,
@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-import lib_neon as N  # noqa: E402
+import lib_kang as N  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

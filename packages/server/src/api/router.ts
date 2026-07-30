@@ -35,7 +35,7 @@ import {
   scorePerMinute,
   winRate,
   type LoadoutSelection,
-} from '@neon/shared';
+} from '@kang/shared';
 import { config, isOriginAllowed } from '../config.js';
 import type { Database, LeaderboardMetric } from '../db/index.js';
 import { log } from '../logger.js';
@@ -106,7 +106,7 @@ export function createApiRouter(db: Database, rooms: RoomManager): ApiRouter {
   function health() {
     return {
       ok: true,
-      name: 'NEON STRIKE',
+      name: 'KANG BANG',
       protocol: PROTOCOL_VERSION,
       uptimeSec: Math.round((Date.now() - startedAt) / 1000),
       rooms: rooms.roomCount(),

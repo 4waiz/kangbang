@@ -18,7 +18,7 @@
  */
 
 import { Euler, Group, MathUtils, Object3D, Quaternion, Scene, Vector3 } from 'three';
-import { clamp, damp, type WeaponDef } from '@neon/shared';
+import { clamp, damp, type WeaponDef } from '@kang/shared';
 import { store } from '../state/store.js';
 import { assets } from '../engine/assets.js';
 

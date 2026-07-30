@@ -97,7 +97,7 @@ export function modeIcon(iconKey: string, size = 24, color = 'currentColor'): st
   return `<span style="color:${color};display:inline-flex">${square(size, 'currentColor', body)}</span>`;
 }
 
-/** The NEON STRIKE mark: a hex plate with a bolt cut through it. */
+/** The KANG BANG mark: a hex plate with a bolt cut through it. */
 export function logoMark(size = 64, color = '#2ce8ff'): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
     <path d="M32 4 56 17v30L32 60 8 47V17z" stroke="${color}" stroke-width="2.6" fill="rgba(44,232,255,0.06)"/>

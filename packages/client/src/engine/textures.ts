@@ -17,7 +17,7 @@ import {
   SRGBColorSpace,
   type Texture,
 } from 'three';
-import { MATERIALS, type MaterialDef } from '@neon/shared';
+import { MATERIALS, type MaterialDef } from '@kang/shared';
 
 export type TextureQuality = 'low' | 'medium' | 'high';
 

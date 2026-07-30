@@ -1,8 +1,8 @@
 /**
- * @neon/shared - the single source of truth for everything both the client and
+ * @kang/shared - the single source of truth for everything both the client and
  * the authoritative server need to agree on.
  *
- * Import from here (`@neon/shared`) rather than reaching into subpaths so the
+ * Import from here (`@kang/shared`) rather than reaching into subpaths so the
  * public surface stays reviewable.
  */
 
@@ -27,7 +27,7 @@ export * from './data/achievements.js';
 export * from './data/settings.js';
 
 export const BUILD_INFO = {
-  name: 'NEON STRIKE',
+  name: 'KANG BANG',
   version: '1.0.0',
   codename: 'Ion Cascade',
 } as const;

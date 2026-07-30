@@ -41,7 +41,7 @@ import {
   type PlayerPublicState,
   type SettingSpec,
   type WeaponDef,
-} from '@neon/shared';
+} from '@kang/shared';
 import { audio } from '../engine/audio.js';
 import { assets } from '../engine/assets.js';
 import type { InputManager } from '../engine/input.js';
@@ -216,7 +216,7 @@ export class App {
 
       const stats = assets.stats();
       // eslint-disable-next-line no-console
-      console.info(`[neon] ${stats.models} models, ${fmtNumber(stats.triangles)} triangles loaded`);
+      console.info(`[kang] ${stats.models} models, ${fmtNumber(stats.triangles)} triangles loaded`);
       progress(1);
       window.setTimeout(() => this.showMenu(), 320);
     } catch (err) {
@@ -1746,7 +1746,7 @@ export class App {
           el(
             'div',
             { class: 'plate' },
-            eyebrow('NEON STRIKE'),
+            eyebrow('KANG BANG'),
             el('h2', { style: { marginTop: '8px' } }, 'An original browser FPS'),
             el(
               'p',
@@ -1779,7 +1779,7 @@ export class App {
             el('p', {}, 'No cosmetic affects a hitbox, a damage number or a movement value. Attachments are strict side-grades with a real downside.'),
             el('hr', { class: 'rule' }),
             eyebrow('NOT AFFILIATED'),
-            el('p', { class: 'faint' }, 'NEON STRIKE is an independent, original work. It is not associated with or derived from any other game, and contains no third-party assets, names or branding.'),
+            el('p', { class: 'faint' }, 'KANG BANG is an independent, original work. It is not associated with or derived from any other game, and contains no third-party assets, names or branding.'),
           ),
         ),
         [button('BACK', () => this.showMenu(), { class: 'btn--ghost', hint: 'ESC' })],
@@ -2100,7 +2100,7 @@ export class App {
             'div',
             { class: 'plate', style: { minWidth: '340px' } },
             eyebrow('PAUSED'),
-            el('h1', { style: { margin: '10px 0 18px' } }, 'NEON STRIKE'),
+            el('h1', { style: { margin: '10px 0 18px' } }, 'KANG BANG'),
             el(
               'div',
               { class: 'col' },

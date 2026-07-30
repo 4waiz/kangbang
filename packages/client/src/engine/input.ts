@@ -11,7 +11,7 @@
  * which is what the "Raw mouse input" setting exposes.
  */
 
-import { ACTIONS, clamp } from '@neon/shared';
+import { ACTIONS, clamp } from '@kang/shared';
 import { store } from '../state/store.js';
 
 export type ActionId = string;

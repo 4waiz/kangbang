@@ -25,7 +25,7 @@ import {
   Vector3,
   type Material,
 } from 'three';
-import { MATERIALS, type BrushDef, type MapDef, type MaterialDef } from '@neon/shared';
+import { MATERIALS, type BrushDef, type MapDef, type MaterialDef } from '@kang/shared';
 import { store } from '../state/store.js';
 import { materialTexture, type TextureQuality } from './textures.js';
 

@@ -7,7 +7,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { MAX_PLAYERS, SNAPSHOT_RATE, TICK_RATE } from '@neon/shared';
+import { MAX_PLAYERS, SNAPSHOT_RATE, TICK_RATE } from '@kang/shared';
 
 function num(name: string, fallback: number, lo = -Infinity, hi = Infinity): number {
   const raw = process.env[name];
@@ -61,7 +61,7 @@ export const config = {
 
   db: {
     driver: str('DB_DRIVER', 'sqlite') as 'sqlite' | 'postgres' | 'memory',
-    sqlitePath: str('SQLITE_PATH', './data/neonstrike.db'),
+    sqlitePath: str('SQLITE_PATH', './data/kangbang.db'),
     url: str('DATABASE_URL', ''),
   },
 

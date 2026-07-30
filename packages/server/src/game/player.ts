@@ -38,7 +38,7 @@ import {
   type MoveContext,
   type MoveState,
   type WeaponDef,
-} from '@neon/shared';
+} from '@kang/shared';
 
 export const SLOT_PRIMARY = 0;
 export const SLOT_SECONDARY = 1;

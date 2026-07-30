@@ -31,7 +31,7 @@ import {
   WebGLRenderer,
   type Texture,
 } from 'three';
-import type { MapAmbience } from '@neon/shared';
+import type { MapAmbience } from '@kang/shared';
 import { store } from '../state/store.js';
 import { skyTexture, type TextureQuality } from './textures.js';
 

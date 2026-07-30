@@ -29,7 +29,7 @@ import {
   yawFromDirection,
   type InputCommand,
   type NavGraph,
-} from '@neon/shared';
+} from '@kang/shared';
 import type { Match } from './match.js';
 import { SLOT_MELEE, SLOT_PRIMARY, SLOT_SECONDARY, type ServerPlayer } from './player.js';
 

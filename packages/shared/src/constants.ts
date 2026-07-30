@@ -1,5 +1,5 @@
 /**
- * NEON STRIKE - global simulation constants.
+ * KANG BANG - global simulation constants.
  *
  * Every value here is authoritative and is consumed identically by the client
  * predictor and the server simulation.  Do not fork these numbers: if the two

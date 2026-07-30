@@ -13,7 +13,6 @@ import {
   COUNTDOWN_SECONDS,
   MATCH_END_SECONDS,
   MAX_CHAT_LENGTH,
-  MAX_NAME_LENGTH,
   MIN_PLAYERS_TO_START,
   MatchPhase,
   Msg,
@@ -47,7 +46,7 @@ import {
   type MatchResultsPayload,
   type PlayerPublicState,
   type SelfState,
-} from '@neon/shared';
+} from '@kang/shared';
 import { config } from '../config.js';
 import type { Database } from '../db/index.js';
 import { BotController, botClassFor, botName, type BotDifficulty } from '../game/bots.js';

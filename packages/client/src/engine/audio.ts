@@ -14,7 +14,7 @@
  * Impulse responses for the convolution tail are generated as decaying noise.
  */
 
-import { clamp, type WeaponDef } from '@neon/shared';
+import { clamp, type WeaponDef } from '@kang/shared';
 import { store } from '../state/store.js';
 
 export type Bus = 'sfx' | 'ui' | 'music' | 'ambience' | 'voice';

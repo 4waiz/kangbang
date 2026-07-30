@@ -18,13 +18,13 @@ import { store } from './state/store.js';
 
 function fail(message: string, detail?: unknown): void {
   // eslint-disable-next-line no-console
-  console.error('[neon]', message, detail);
+  console.error('[kang]', message, detail);
   const ui = document.getElementById('ui');
   if (!ui) return;
   ui.innerHTML = `
     <div class="screen">
       <div class="boot">
-        <h1>NEON STRIKE</h1>
+        <h1>KANG BANG</h1>
         <div class="plate plate--ember" style="max-width:560px;text-align:left">
           <h3>${message}</h3>
           <p>${detail ? String(detail) : ''}</p>

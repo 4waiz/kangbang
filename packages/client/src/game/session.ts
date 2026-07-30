@@ -4,7 +4,7 @@
  * Prediction model
  * ----------------
  * The client runs the SAME movement code as the server (`movementStep` from
- * @neon/shared) at a fixed 60Hz. Each step produces an InputCommand that is
+ * @kang/shared) at a fixed 60Hz. Each step produces an InputCommand that is
  * sent immediately and kept in a pending list. When a snapshot arrives with an
  * `ackSeq`, we:
  *   1. compare our predicted position at that sequence to the authoritative one
@@ -49,7 +49,6 @@ import {
   recoilForShot,
   shotInterval,
   wrapAngle,
-  type InputCommand,
   type KillFeedEntry,
   type LoadoutSelection,
   type MapDef,
@@ -60,8 +59,7 @@ import {
   type Snapshot,
   type WeaponDef,
   type WireEvent,
-} from '@neon/shared';
-import { assets } from '../engine/assets.js';
+} from '@kang/shared';
 import { audio } from '../engine/audio.js';
 import { FxSystem } from '../engine/fx.js';
 import { InputManager } from '../engine/input.js';

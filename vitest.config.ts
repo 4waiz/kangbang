@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      '@neon/shared': resolve(__dirname, 'packages/shared/src/index.ts'),
+      '@kang/shared': resolve(__dirname, 'packages/shared/src/index.ts'),
     },
   },
   test: {

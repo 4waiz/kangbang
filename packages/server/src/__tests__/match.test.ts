@@ -20,7 +20,7 @@ import {
   Team,
   getMode,
   type InputCommand,
-} from '@neon/shared';
+} from '@kang/shared';
 import { Match } from '../game/match.js';
 import { ServerPlayer, defaultLoadoutFor } from '../game/player.js';
 import { BotController, botClassFor, botName } from '../game/bots.js';

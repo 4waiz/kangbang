@@ -5,7 +5,7 @@
     "types": ["node"],
     "moduleResolution": "bundler",
     "paths": {
-      "@neon/shared": ["../shared/src/index.ts"]
+      "@kang/shared": ["../shared/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "build.mjs"]

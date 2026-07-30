@@ -24,7 +24,7 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { CLASSES, WEAPON_ORDER, WEAPONS } from '@neon/shared';
+import { CLASSES, WEAPON_ORDER, WEAPONS } from '@kang/shared';
 
 export interface LoadedAsset {
   /** Template scene; clone with `instantiate()` rather than reusing. */

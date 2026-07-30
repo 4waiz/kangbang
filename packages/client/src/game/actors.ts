@@ -34,7 +34,7 @@ import {
   lerpAngle,
   type EntitySnapshot,
   type PlayerPublicState,
-} from '@neon/shared';
+} from '@kang/shared';
 import { store } from '../state/store.js';
 import { assets } from '../engine/assets.js';
 

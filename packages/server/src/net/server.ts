@@ -17,7 +17,7 @@ import {
   levelFromXp,
   sanitiseName,
   validateJsonMessage,
-} from '@neon/shared';
+} from '@kang/shared';
 import { config, isOriginAllowed } from '../config.js';
 import type { Database } from '../db/index.js';
 import { log } from '../logger.js';
@@ -274,7 +274,7 @@ export async function startServer(db: Database): Promise<GameServer> {
 
   const address = httpServer.address();
   const port = typeof address === 'object' && address ? address.port : config.port;
-  log.info('server', `NEON STRIKE server listening on http://${config.host}:${port}`, {
+  log.info('server', `KANG BANG server listening on http://${config.host}:${port}`, {
     db: db.driver,
     tickRate: config.tickRate,
     snapshotRate: config.snapshotRate,

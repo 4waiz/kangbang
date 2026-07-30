@@ -21,7 +21,7 @@ import {
   weaponMasteryXp,
   type MatchResultPlayer,
   type StatCounter,
-} from '@neon/shared';
+} from '@kang/shared';
 import type { Database, MatchRecord, PlayerProfile } from '../db/index.js';
 import { emptyClassStats, emptyWeaponStats } from '../db/index.js';
 import type { ServerPlayer } from './player.js';

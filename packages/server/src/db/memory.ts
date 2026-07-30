@@ -13,7 +13,7 @@ import {
   type MatchRecord,
   type PlayerProfile,
 } from './types.js';
-import { levelFromXp } from '@neon/shared';
+import { levelFromXp } from '@kang/shared';
 
 export class MemoryDatabase implements Database {
   readonly driver = 'memory';

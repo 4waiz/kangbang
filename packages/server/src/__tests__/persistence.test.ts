@@ -12,14 +12,14 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { levelFromXp } from '@neon/shared';
+import { levelFromXp } from '@kang/shared';
 import { MemoryDatabase } from '../db/memory.js';
 import { SqliteDatabase } from '../db/sqlite.js';
 import { emptyClassStats, emptyWeaponStats, metricValue, meetsLeaderboardMinimum } from '../db/types.js';
 import type { Database, MatchRecord, PlayerProfile } from '../db/types.js';
 import { extractToken, issueToken, newGuestId, verifyToken } from '../api/tokens.js';
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'neon-db-'));
+const tmpRoot = mkdtempSync(join(tmpdir(), 'kang-db-'));
 let dbFileSeq = 0;
 
 afterAll(() => {

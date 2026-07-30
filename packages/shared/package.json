@@ -1,9 +1,9 @@
 {
-  "name": "@neon/shared",
+  "name": "@kang/shared",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared simulation, data tables and wire protocol for NEON STRIKE",
+  "description": "Shared simulation, data tables and wire protocol for KANG BANG",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
