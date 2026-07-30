@@ -56,25 +56,57 @@ def log(message: str) -> None:
 # ---------------------------------------------------------------------------
 
 # (name, base_color, metallic, roughness, emission_color, emission_strength)
+#
+# Grounded materials: real firearms and kit, not energy weapons. Three things
+# changed together here, and each one was causing a visible problem.
+#
+#   Emission strengths were 5-7 on the `energy` materials. The client dropped its
+#   filmic tone curve when the palette went grounded, so anything over 1.0 clips
+#   flat to pure white - every weapon and character wore white slabs where its
+#   trim should be. Nothing here emits above 0.8 now, and almost nothing emits at
+#   all, because a rifle does not glow.
+#
+#   Metallic was 0.72-0.90 on the body and trim. A metallic surface with no
+#   environment map to reflect renders black, and the client no longer ships one
+#   (it was 12 MB). Real gun finishes are coated, phosphated or polymer, so low
+#   metallic is both cheaper and more accurate.
+#
+#   The `energy_*` names are kept as aliases so no generator has to change, but
+#   they are now paint and marking colours. What was a glowing cyan strip is a
+#   painted blue panel.
 MATERIAL_LIBRARY = {
-    "ns_body": ((0.30, 0.34, 0.40, 1.0), 0.72, 0.38, None, 0.0),
-    "ns_body_dark": ((0.11, 0.13, 0.17, 1.0), 0.66, 0.42, None, 0.0),
-    "ns_body_light": ((0.62, 0.67, 0.74, 1.0), 0.55, 0.34, None, 0.0),
-    "ns_trim": ((0.06, 0.07, 0.09, 1.0), 0.85, 0.28, None, 0.0),
-    "ns_grip": ((0.09, 0.10, 0.12, 1.0), 0.10, 0.72, None, 0.0),
-    "ns_energy_cyan": ((0.05, 0.55, 0.70, 1.0), 0.10, 0.25, (0.17, 0.91, 1.0), 6.0),
-    "ns_energy_lime": ((0.30, 0.70, 0.15, 1.0), 0.10, 0.25, (0.55, 1.0, 0.29), 5.0),
-    "ns_energy_amber": ((0.75, 0.45, 0.10, 1.0), 0.10, 0.25, (1.0, 0.69, 0.17), 5.0),
-    "ns_energy_violet": ((0.50, 0.35, 0.85, 1.0), 0.10, 0.25, (0.78, 0.63, 1.0), 5.0),
-    "ns_energy_white": ((0.80, 0.88, 0.95, 1.0), 0.10, 0.20, (0.81, 0.91, 1.0), 7.0),
-    "ns_glass": ((0.55, 0.78, 0.90, 0.28), 0.10, 0.06, (0.04, 0.16, 0.20), 0.6),
-    "ns_skin": ((0.78, 0.60, 0.46, 1.0), 0.0, 0.62, None, 0.0),
-    "ns_team": ((0.15, 0.55, 0.68, 1.0), 0.40, 0.36, (0.17, 0.91, 1.0), 1.4),
-    "ns_visor": ((0.04, 0.10, 0.14, 1.0), 0.30, 0.10, (0.17, 0.91, 1.0), 3.0),
-    "ns_rubber": ((0.07, 0.08, 0.09, 1.0), 0.02, 0.88, None, 0.0),
-    "ns_brass": ((0.72, 0.56, 0.24, 1.0), 0.90, 0.30, None, 0.0),
-    "ns_crate": ((0.55, 0.38, 0.16, 1.0), 0.12, 0.70, None, 0.0),
-    "ns_hazard": ((0.82, 0.68, 0.20, 1.0), 0.20, 0.55, (0.16, 0.12, 0.0), 0.4),
+    # Weapon and armour bodies: phosphate grey, polymer black, worn aluminium.
+    "ns_body": ((0.29, 0.31, 0.33, 1.0), 0.25, 0.52, None, 0.0),
+    "ns_body_dark": ((0.13, 0.14, 0.15, 1.0), 0.18, 0.62, None, 0.0),
+    "ns_body_light": ((0.60, 0.62, 0.64, 1.0), 0.22, 0.48, None, 0.0),
+    "ns_trim": ((0.09, 0.09, 0.10, 1.0), 0.30, 0.44, None, 0.0),
+    "ns_grip": ((0.10, 0.10, 0.11, 1.0), 0.02, 0.86, None, 0.0),
+
+    # Marking and accent colours. Painted, not lit.
+    "ns_energy_cyan": ((0.16, 0.38, 0.55, 1.0), 0.05, 0.60, None, 0.0),
+    "ns_energy_lime": ((0.24, 0.45, 0.24, 1.0), 0.05, 0.62, None, 0.0),
+    "ns_energy_amber": ((0.68, 0.45, 0.14, 1.0), 0.05, 0.58, None, 0.0),
+    "ns_energy_violet": ((0.42, 0.34, 0.46, 1.0), 0.05, 0.62, None, 0.0),
+    # Off-white plastic and painted steel, e.g. sights and stencils.
+    "ns_energy_white": ((0.84, 0.85, 0.84, 1.0), 0.05, 0.52, None, 0.0),
+
+    "ns_glass": ((0.62, 0.70, 0.74, 0.30), 0.0, 0.10, None, 0.0),
+    "ns_skin": ((0.76, 0.58, 0.45, 1.0), 0.0, 0.64, None, 0.0),
+
+    # Team identification: a painted armband and a helmet patch. Faint emission
+    # only, so it stays readable across a room without glowing.
+    "ns_team": ((0.20, 0.42, 0.66, 1.0), 0.05, 0.58, (0.20, 0.42, 0.66), 0.25),
+    # Tinted eye protection. Dark and slightly glossy, no glow.
+    "ns_visor": ((0.09, 0.11, 0.13, 1.0), 0.20, 0.18, None, 0.0),
+
+    "ns_rubber": ((0.08, 0.08, 0.09, 1.0), 0.02, 0.90, None, 0.0),
+    # Brass cases, the one genuinely metallic thing left, and small enough that
+    # having nothing to reflect does not read as a fault.
+    "ns_brass": ((0.68, 0.54, 0.26, 1.0), 0.55, 0.36, None, 0.0),
+    "ns_crate": ((0.52, 0.38, 0.20, 1.0), 0.06, 0.74, None, 0.0),
+    # Safety yellow. Real hazard markings are retroreflective, so a hint of
+    # emission is defensible and keeps them legible in shadow.
+    "ns_hazard": ((0.84, 0.70, 0.18, 1.0), 0.05, 0.58, (0.84, 0.70, 0.18), 0.18),
 }
 
 MAT_BODY = "ns_body"

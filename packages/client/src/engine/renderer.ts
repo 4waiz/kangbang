@@ -90,7 +90,19 @@ export class Renderer {
     this.renderer.autoClear = true;
     this.renderer.info.autoReset = false;
 
-    this.camera = new PerspectiveCamera(store.num('fov'), 1, 0.05, store.num('drawDistance'));
+    /*
+     * Near plane 0.2, not 0.05.
+     *
+     * Depth precision goes as z^2 / (near * 2^bits), so the near plane dominates
+     * it. At 0.05 the smallest resolvable depth step at 100m is around 12mm, and
+     * the maps place decorative overlays - stripes, trim, signage - only 5 to 12mm
+     * off the wall behind them. There are over a thousand overlapping coplanar
+     * face pairs per map, which is why distant surfaces shimmered and seams came
+     * out dotted. 0.2 is a fourfold improvement and is still well inside the
+     * 0.42m player radius, so nothing in the world scene can clip through it.
+     * The view model renders from its own camera and is unaffected.
+     */
+    this.camera = new PerspectiveCamera(store.num('fov'), 1, 0.2, store.num('drawDistance'));
     this.viewCamera = new PerspectiveCamera(store.num('viewModelFov'), 1, 0.005, 6);
 
     this.hemi = new HemisphereLight(0x8098c0, 0x20242e, 0.9);

@@ -149,6 +149,23 @@ function lightBudget(): number {
   }
 }
 
+/**
+ * Materials that are decoration on top of another surface rather than structure.
+ * Listed explicitly because the geometry cannot tell us: a 4cm-thick brush might
+ * be a painted stripe or a genuine kerb, and only the material says which.
+ */
+const OVERLAY_MATERIALS = new Set([
+  'neonCyan',
+  'neonMagenta',
+  'neonAmber',
+  'neonLime',
+  'hazard',
+  'teamIon',
+  'teamEmber',
+  'holo',
+  'trim',
+]);
+
 function makeMaterial(key: string, def: MaterialDef, quality: TextureQuality, neonBoost: number): Material {
   const transparent = def.opacity < 1;
   const emissiveStrength = def.emissiveIntensity * neonBoost;
@@ -197,6 +214,21 @@ function makeMaterial(key: string, def: MaterialDef, quality: TextureQuality, ne
     mat.map = tex;
     if (def.emissive !== 0 && def.emissiveIntensity < 2) mat.emissiveMap = tex;
   }
+
+  /*
+   * Overlay materials get a depth bias toward the viewer.
+   *
+   * The maps place decoration a few millimetres proud of the surface behind it,
+   * which the depth buffer cannot reliably separate at range - over a thousand
+   * overlapping coplanar face pairs per map, appearing as shimmer and dotted
+   * seams. A polygon offset makes the overlay win deterministically instead of by
+   * luck of rounding, which beats nudging hundreds of brushes by hand.
+   */
+  if (OVERLAY_MATERIALS.has(key)) {
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -1;
+    mat.polygonOffsetUnits = -2;
+  }
   return mat;
 }
 
@@ -213,7 +245,9 @@ function appendBox(batch: Batch, brush: BrushDef): void {
   const cos = Math.cos(yaw);
   const sin = Math.sin(yaw);
   // World-space texel density so a 1m wall and a 20m floor share a scale.
-  const density = 0.35;
+  // 0.5 puts one tile every 2m, which lands on the grid the maps are built to;
+  // the previous 0.35 tiled every 2.857m and so never aligned with a wall edge.
+  const density = 0.5;
 
   for (const face of BOX_FACES) {
     const base = batch.vertexCount;
@@ -233,16 +267,29 @@ function appendBox(batch: Batch, brush: BrushDef): void {
       const wnz = -nx * sin + nz * cos;
       batch.normals.push(wnx, ny, wnz);
 
+      /*
+       * Project onto the face's own tangent frame, not onto world axes.
+       *
+       * Using world position against world axes is only correct when the brush is
+       * axis-aligned. On a yaw-rotated brush the in-plane distance along the face
+       * does not match the world axis it is measured against, so the pattern
+       * compresses by 1/cos(yaw) - 1.41x at 45 degrees - and visibly fails to
+       * line up with the surface. Projecting onto the rotated tangent cancels the
+       * rotation and leaves true surface distance plus a constant world offset,
+       * so neighbouring unrotated brushes still share a continuous tile.
+       */
+      const alongLocalX = cx * cos - cz * sin + px;
+      const alongLocalZ = cx * sin + cz * cos + pz;
       let u: number;
       let v: number;
       if (Math.abs(ny) > 0.5) {
-        u = (cx + wx) * density;
-        v = (cz + wz) * density;
+        u = alongLocalX * density;
+        v = alongLocalZ * density;
       } else if (Math.abs(nx) > 0.5) {
-        u = (cz + wz) * density;
+        u = alongLocalZ * density;
         v = (cy + py) * density;
       } else {
-        u = (cx + wx) * density;
+        u = alongLocalX * density;
         v = (cy + py) * density;
       }
       batch.uvs.push(u, v);
@@ -265,7 +312,7 @@ function appendWedge(batch: Batch, brush: BrushDef): void {
   const dir = brush.d ?? '+x';
   const alongX = dir === '+x' || dir === '-x';
   const sign = dir === '+x' || dir === '+z' ? 1 : -1;
-  const density = 0.35;
+  const density = 0.5;
 
   // Local corners: bottom rectangle at -hy, top edge at +hy on the high side.
   // Rise axis coordinate `a`, cross axis `b`.

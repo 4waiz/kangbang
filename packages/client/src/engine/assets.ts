@@ -331,10 +331,18 @@ export class AssetLibrary {
     if (src.emissive && (src.emissive.r || src.emissive.g || src.emissive.b)) {
       mat.emissive = src.emissive.clone();
       mat.emissiveMap = src.emissiveMap ?? null;
-      // Blender exports a strength we want to keep, but a strongly emissive
-      // surface must not be tone-mapped or it reads as flat grey.
-      mat.emissiveIntensity = src.emissiveIntensity;
-      if (src.emissiveIntensity > 1.5) mat.toneMapped = false;
+      /*
+       * Clamp the emissive into display range.
+       *
+       * The generators author strengths of 5-7 for glowing trim, which the old
+       * ACES filmic curve rolled off into a shaped highlight. With no tone curve
+       * - the right choice for a grounded palette - anything over 1.0 clips flat
+       * to pure white, so every weapon and character wore white slabs where its
+       * trim should be. Clamping to just under 1 keeps the part reading as lit
+       * without destroying the colour and the surface detail underneath.
+       */
+      const peak = Math.max(src.emissive.r, src.emissive.g, src.emissive.b) || 1;
+      mat.emissiveIntensity = Math.min(src.emissiveIntensity, 0.85 / peak);
     }
     mat.name = src.name;
     this.materialCache.set(cacheKey, mat);

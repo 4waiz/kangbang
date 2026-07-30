@@ -226,7 +226,7 @@ export const MATERIALS: Record<string, MaterialDef> = {
    * the floor is the point-light budget, which is six lights for a 72 m room on
    * low effects quality.
    */
-  lampPanel: { color: 0xffffff, emissive: 0xfff6e2, emissiveIntensity: 1.5, roughness: 0.4, metalness: 0, opacity: 1, surface: 'panel', minimap: 0, pattern: 'plain' },
+  lampPanel: { color: 0xffffff, emissive: 0xfff6e2, emissiveIntensity: 0.85, roughness: 0.4, metalness: 0, opacity: 1, surface: 'panel', minimap: 0, pattern: 'plain' },
 
   // Structure: galvanised steel and painted girders. A little metalness for the
   // sheen, not enough to need anything to reflect.
