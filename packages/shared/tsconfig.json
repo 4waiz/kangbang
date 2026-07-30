@@ -2,7 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    // `shared` is the bottom layer and must compile with only itself present.
+    // Nothing here may import from `client` or `server`: the server Docker build
+    // copies only shared + server, so a reach into the client package breaks the
+    // image build while passing locally. `rootDir` makes that a compile error
+    // here instead of a surprise in CI - which is how it was found.
+    "rootDir": "src"
   },
   "include": ["src/**/*.ts"]
 }

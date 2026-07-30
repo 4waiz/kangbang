@@ -1,0 +1,209 @@
+# Asset manifest
+
+**Every asset in KANG BANG is generated from source in this repository. There is
+no third-party content of any kind — no downloaded models, textures, sounds,
+fonts, icons or fixtures.**
+
+That is a structural property, not a promise. Models come from Blender Python in
+`assets/scripts/`, textures are drawn to a canvas at runtime, audio is synthesised
+by the Web Audio API, and icons are inline SVG paths written by hand. There is no
+step in the build at which an external asset could enter.
+
+| Category | Items | Bytes shipped | Source |
+| --- | --- | --- | --- |
+| 3D models | 59 GLB | 604 KB | `assets/scripts/gen_*.py` |
+| Textures | ~30 | **0** | `packages/client/src/engine/textures.ts` — canvas, at boot |
+| Audio | ~45 | **0** | `packages/client/src/engine/audio.ts` — Web Audio, at play time |
+| Icons | ~45 | **0** | `packages/client/src/ui/icons.ts` — inline SVG |
+| Fonts | 0 | **0** | System font stack only |
+| Maps | 3 | in code | `packages/shared/src/data/maps/*.ts` |
+
+---
+
+## 3D models — 59 files, 604 KB
+
+Regenerate with `npm run assets`. Verify with `npm run assets:check` (no Blender
+needed). Files live in `packages/client/public/assets/models/`.
+
+### Weapons — 20 files, 225 KB
+
+Each weapon has a first-person model and a world model. The FP model is detailed
+because it fills a third of the screen; the world model is the silhouette other
+players see.
+
+| Weapon | First person | World |
+| --- | --- | --- |
+| Pulse Assault Rifle | `wpn_pulse_ar` 10.8 KB | `wpn_pulse_ar_world` 10.6 KB |
+| Plasma SMG | `wpn_plasma_smg` 10.1 KB | `wpn_plasma_smg_world` 9.9 KB |
+| Rail Sniper | `wpn_rail_sniper` 14.2 KB | `wpn_rail_sniper_world` 14.0 KB |
+| Ion Shotgun | `wpn_ion_shotgun` 12.5 KB | `wpn_ion_shotgun_world` 12.2 KB |
+| Heavy Particle LMG | `wpn_particle_lmg` 13.4 KB | `wpn_particle_lmg_world` 13.1 KB |
+| Burst Carbine | `wpn_burst_carbine` 10.9 KB | `wpn_burst_carbine_world` 10.6 KB |
+| Energy Pistol | `wpn_energy_pistol` 9.1 KB | `wpn_energy_pistol_world` 8.8 KB |
+| Tactical Revolver | `wpn_tactical_revolver` 10.3 KB | `wpn_tactical_revolver_world` 10.0 KB |
+| Plasma Blade | `wpn_plasma_blade` 8.4 KB | `wpn_plasma_blade_world` 8.2 KB |
+| Arc Launcher | `wpn_arc_launcher` 13.9 KB | `wpn_arc_launcher_world` 13.7 KB |
+
+Sockets on every weapon: `muzzle`, `eject`, `grip`, `sight`.
+
+### Characters — 7 files, 190 KB
+
+| Model | Size |
+| --- | --- |
+| `char_vanguard` | 27.9 KB |
+| `char_phantom` | 28.4 KB |
+| `char_titan` | 31.7 KB |
+| `char_warden` | 30.0 KB |
+| `char_spectre` | 30.2 KB |
+| `char_engineer` | 29.7 KB |
+| `char_arms_fp` (first-person arms) | 12.2 KB |
+
+Sockets: `weapon`, `head`, `nameplate`. Each of these seven carries a decimated
+`*_LOD1` mesh in the same file, paired into a `THREE.LOD` at load time — see
+[PERFORMANCE.md](PERFORMANCE.md).
+
+### Props — 20 files, 127 KB
+
+`prop_ac_unit` · `prop_antenna` · `prop_barrel` · `prop_conveyor_arm` ·
+`prop_coolant_tank` · `prop_crane` · `prop_crate_stack` · `prop_holo_billboard` ·
+`prop_holo_globe` · `prop_holo_sign` · `prop_hovercar` · `prop_pipe_run` ·
+`prop_reactor_ring` · `prop_satellite` · `prop_spawn_arch` · `prop_spire_collar` ·
+`prop_streetlight` · `prop_strut` · `prop_terminal` · `prop_vent`
+
+Props are decoration only. Collision comes from map brushes, never from a prop, so
+"the visuals do not match the collision" is not expressible.
+
+### Pickups — 4 files, 17 KB
+
+`pickup_health` 3.9 KB · `pickup_shield` 4.0 KB · `pickup_ammo` 4.3 KB ·
+`pickup_pedestal` 5.2 KB
+
+### Objectives — 2 files, 14 KB
+
+`obj_core` 8.4 KB (Capture the Core) · `obj_zone_marker` 5.6 KB (Domination,
+Hardpoint)
+
+### Deployables — 5 files, 28 KB
+
+`dep_turret` 6.4 KB · `dep_barrier` 4.7 KB · `dep_dome` 5.4 KB ·
+`dep_field` 5.9 KB · `dep_grenade` 5.0 KB
+
+### Team markers — 1 file, 3 KB
+
+`team_marker` 2.9 KB
+
+---
+
+## Textures — 0 bytes downloaded
+
+Drawn to an offscreen canvas at boot by
+`packages/client/src/engine/textures.ts`, then cached and reused. Texture quality
+scales the canvas resolution, so Low genuinely costs less VRAM.
+
+| Group | Includes |
+| --- | --- |
+| Surfaces | brushed metal, painted panel, concrete, grating, rubber, glass, rusted plate, tile |
+| Emissive | light panel, neon strip, holo screen, warning stripe, energy conduit |
+| Decals | bullet holes per surface, scorch marks, blast rings, team stencils |
+| Particles | spark, smoke puff, ring flash, tracer gradient |
+| Sky | gradient skyboxes per map ambience, plus the PMREM environment map derived from them |
+| UI | crosshair presets, minimap tiles, button and plate textures |
+
+Procedural for three reasons: nothing to download, no licence to track, and a
+palette change is one edit rather than a re-export of thirty images.
+
+---
+
+## Audio — 0 bytes downloaded
+
+Synthesised on demand by `packages/client/src/engine/audio.ts` using oscillators,
+noise buffers, envelopes and filters. Every sound in the game is a recipe, not a
+file.
+
+| Group | Includes |
+| --- | --- |
+| Weapons | a distinct fire, reload, dry-fire and equip per weapon — ten sets |
+| Impacts | per-surface hit sounds, ricochets, flesh hits, shield hits |
+| Feedback | hit marker, headshot confirm, kill confirm, damage taken, low health |
+| Movement | footsteps per surface, jump, land, slide start/stop |
+| Abilities | activation and expiry cues for all twelve abilities and ultimates |
+| Objectives | capture start/progress/complete, core pickup/drop/score, hardpoint rotation |
+| Match | countdown, round start, round win/loss, match end, overtime |
+| UI | hover, click, back, error, unlock, level-up, XP tick |
+| Ambience | per-map loops built from filtered noise and slow oscillators |
+
+Seven independent volume buses (master, music, SFX, voice, UI, ambience, hit
+confirmation) so a player can silence music and keep footsteps loud.
+
+The obvious constraint: synthesised audio cannot sound like a recorded gunshot.
+It is designed to be *readable* instead — every weapon is distinguishable by ear,
+which is what matters competitively. And it means there is no third-party sample
+anywhere.
+
+---
+
+## Icons — 0 bytes downloaded
+
+Inline SVG paths in `packages/client/src/ui/icons.ts`: ten weapon icons, six class
+icons, eight mode icons, twenty-odd UI glyphs, plus banner and profile emblems and
+the game's own mark.
+
+Weapon icons are silhouette-first because the size that matters is 22 px in the
+kill feed, not 64 px in a menu.
+
+The helpers return `HTMLSpanElement`, not markup strings — see
+[DEVELOPMENT.md](DEVELOPMENT.md) for why that distinction earned a place in the
+conventions.
+
+---
+
+## Fonts
+
+None bundled. The UI uses a system stack (`ui-monospace`/`SFMono`/`Consolas` for
+data, a system sans for prose), so there is no font download, no FOUT and no font
+licence to track.
+
+---
+
+## Maps
+
+Maps are code, not asset files:
+
+| Map | Source | Brushes |
+| --- | --- | --- |
+| Neon Foundry | `packages/shared/src/data/maps/neonFoundry.ts` | 613 |
+| Orbital Nexus | `packages/shared/src/data/maps/orbitalNexus.ts` | 614 |
+| Mirage District | `packages/shared/src/data/maps/mirageDistrict.ts` | 706 |
+
+Each brush list is simultaneously the render mesh, the collision hull, the navmesh
+source and the Blender export. One geometry, four consumers.
+
+---
+
+## Licensing
+
+All generated assets are covered by the project's MIT licence. There is no
+third-party asset licence to comply with, because there are no third-party assets.
+
+Dependencies and their licences are listed in [CREDITS.md](CREDITS.md).
+
+---
+
+## Verifying this claim yourself
+
+```bash
+# Nothing but code and generated GLBs under public/
+ls packages/client/public/assets/
+
+# No image, audio or font files anywhere in the client
+find packages/client/src -type f \
+  \( -name '*.png' -o -name '*.jpg' -o -name '*.gif' -o -name '*.webp' \
+     -o -name '*.mp3' -o -name '*.wav' -o -name '*.ogg' \
+     -o -name '*.ttf' -o -name '*.woff*' \)
+
+# Every GLB regenerates from source
+npm run assets && git status --short packages/client/public/assets/
+```
+
+The last command is the strongest check: if a model had been hand-edited or
+sourced elsewhere, regenerating would produce a diff.

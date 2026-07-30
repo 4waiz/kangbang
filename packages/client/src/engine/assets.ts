@@ -10,12 +10,18 @@
  * `SOCKET_grip`, `SOCKET_weapon` and `SOCKET_nameplate`. We hoist those into a
  * plain map at load time and strip them from the scene graph, so gameplay code
  * reads `asset.sockets.muzzle` instead of hunting the hierarchy every frame.
+ *
+ * LODs: anything above ~500 triangles is exported with a decimated `*_LOD1`
+ * sibling mesh sharing the same origin. Both are in the GLB, so they must be
+ * pulled apart into a `THREE.LOD` at load time - leaving them as plain siblings
+ * draws the model twice, overlapping, at double the triangle cost.
  */
 
 import {
   BoxGeometry,
   Color,
   Group,
+  LOD,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -30,8 +36,11 @@ export interface LoadedAsset {
   /** Template scene; clone with `instantiate()` rather than reusing. */
   scene: Group;
   sockets: Record<string, Vector3>;
+  /** Triangles at full detail - what one close-up instance costs. */
   triangles: number;
   procedural: boolean;
+  /** How many meshes in this asset got a reduced-detail level. */
+  lodLevels: number;
 }
 
 export interface AssetManifest {
@@ -47,6 +56,71 @@ export interface LoadProgress {
 }
 
 const BASE = 'assets/';
+
+/**
+ * Distance at which a mesh switches to its reduced-detail copy.
+ *
+ * Derived from the mesh's own bounding sphere rather than a fixed number: a 2 m
+ * character and a 0.4 m pickup should not swap at the same distance. The
+ * multiplier is the point at which the decimation stops being visible at 1080p.
+ */
+function lodSwitchDistance(mesh: Mesh): number {
+  mesh.geometry.computeBoundingSphere();
+  const radius = mesh.geometry.boundingSphere?.radius ?? 1;
+  return Math.max(12, radius * 14);
+}
+
+/**
+ * Replace each mesh that has a `*_LOD1` sibling with a `THREE.LOD` holding both.
+ *
+ * The generators export the decimated copy into the same GLB at the same origin,
+ * so without this the renderer draws full detail and reduced detail on top of
+ * each other: double the triangles, plus depth and shadow artefacts where the
+ * two surfaces disagree by a millimetre.
+ *
+ * Returns how many meshes got a level, for the diagnostics readout.
+ */
+function attachLods(scene: Group, lodMeshes: Map<string, Mesh>): number {
+  if (lodMeshes.size === 0) return 0;
+  let attached = 0;
+
+  for (const [baseName, low] of lodMeshes) {
+    const high = scene.getObjectByName(baseName) as Mesh | undefined;
+    // An orphaned LOD mesh (renamed base, or a generator bug) must not be left
+    // in the scene: it would render as a duplicate with no matching original.
+    if (!high?.isMesh) {
+      low.parent?.remove(low);
+      continue;
+    }
+    const parent = high.parent;
+    if (!parent) continue;
+
+    const lod = new LOD();
+    lod.name = `${baseName}_lod`;
+    lod.position.copy(high.position);
+    lod.quaternion.copy(high.quaternion);
+    lod.scale.copy(high.scale);
+
+    // Levels sit at the LOD's own origin; the transform now lives on the LOD.
+    parent.remove(high);
+    low.parent?.remove(low);
+    for (const level of [high, low]) {
+      level.position.set(0, 0, 0);
+      level.quaternion.identity();
+      level.scale.set(1, 1, 1);
+      level.castShadow = true;
+      level.receiveShadow = false;
+      level.frustumCulled = true;
+    }
+
+    lod.addLevel(high, 0);
+    lod.addLevel(low, lodSwitchDistance(high));
+    parent.add(lod);
+    attached++;
+  }
+
+  return attached;
+}
 
 export class AssetLibrary {
   private loader = new GLTFLoader();
@@ -124,6 +198,8 @@ export class AssetLibrary {
       const scene = gltf.scene as Group;
       const sockets: Record<string, Vector3> = {};
       const doomed: Object3D[] = [];
+      /** `*_LOD1` meshes, keyed by the base name they belong to. */
+      const lodMeshes = new Map<string, Mesh>();
       let triangles = 0;
 
       scene.updateMatrixWorld(true);
@@ -136,6 +212,13 @@ export class AssetLibrary {
         }
         const mesh = child as Mesh;
         if (!mesh.isMesh) return;
+        const lodMatch = /^(.*)_LOD(\d+)$/.exec(mesh.name);
+        if (lodMatch) {
+          // Held back and paired with its full-detail sibling below. Not counted
+          // in `triangles`, which reports what a close-up instance costs.
+          lodMeshes.set(lodMatch[1], mesh);
+          return;
+        }
         mesh.castShadow = true;
         mesh.receiveShadow = false;
         mesh.frustumCulled = true;
@@ -153,8 +236,15 @@ export class AssetLibrary {
         else if (mat) fix(mat);
       });
       for (const d of doomed) d.parent?.remove(d);
+      const lodLevels = attachLods(scene, lodMeshes);
 
-      this.assets.set(name, { scene, sockets, triangles: Math.round(triangles), procedural: false });
+      this.assets.set(name, {
+        scene,
+        sockets,
+        triangles: Math.round(triangles),
+        procedural: false,
+        lodLevels,
+      });
     } catch (err) {
       if (!this.warned.has(name)) {
         this.warned.add(name);
@@ -198,14 +288,16 @@ export class AssetLibrary {
     return v ? v.clone() : fallback.clone();
   }
 
-  stats(): { models: number; triangles: number; procedural: number } {
+  stats(): { models: number; triangles: number; procedural: number; lods: number } {
     let triangles = 0;
     let procedural = 0;
+    let lods = 0;
     for (const a of this.assets.values()) {
       triangles += a.triangles;
+      lods += a.lodLevels;
       if (a.procedural) procedural++;
     }
-    return { models: this.assets.size, triangles, procedural };
+    return { models: this.assets.size, triangles, procedural, lods };
   }
 
   // ---------------------------------------------------------------------

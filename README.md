@@ -107,7 +107,7 @@ open `http://<your-ip>:5173` on the other machine.
 ```bash
 npm run bots                    # headless: 2 socket clients + bots, 25s of real combat
 node tools/bot-match.mjs --clients 4 --bots 6 --mode tdm --seconds 40
-node tools/browser-check.mjs                       # 22 checks in real Chrome
+node tools/browser-check.mjs                       # 24 checks in real Chrome
 node tools/browser-check.mjs --url http://localhost:4173 --shots ./screenshots
 ```
 
@@ -131,7 +131,7 @@ Requires Blender. Set `BLENDER_PATH` if it is not on your `PATH`. The exported
 ### Tests, linting, types
 
 ```bash
-npm test                # 412 tests across 9 suites
+npm test                # 415 tests across 9 suites
 npm run test:watch      # watch mode
 npm run test:coverage   # with coverage
 npm run typecheck       # tsc --noEmit over all three packages
@@ -287,6 +287,7 @@ Roughly 32,000 lines of TypeScript across 69 files, plus the Blender generators.
 | [SECURITY.md](docs/SECURITY.md) | Threat model, server authority, validation, rate limits, anti-cheat design — and the explicit decision not to ship invasive anti-cheat. |
 | [CONTROLS.md](docs/CONTROLS.md) | Every binding, every setting, accessibility options. |
 | [CREDITS.md](docs/CREDITS.md) | Dependencies and their licences, originality statement. |
+| [ACCEPTANCE.md](docs/ACCEPTANCE.md) | The verified acceptance checklist, known limitations, and the bugs the final verification pass caught. |
 
 ---
 

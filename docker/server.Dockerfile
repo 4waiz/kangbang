@@ -25,13 +25,29 @@ RUN npm run typecheck -w @kang/shared \
  && npm run typecheck -w @kang/server \
  && npm run build -w @kang/server
 
+# Derive a runtime-only manifest.
+#
+# The workspace manifest cannot be used directly: it declares `@kang/shared`,
+# which esbuild has already inlined into the bundle and which does not exist on
+# any registry, so `npm install` in the runtime stage would fail on a 404.
+# Deriving it here rather than hardcoding a manifest keeps the `ws` version in
+# lockstep with the workspace instead of silently drifting.
+RUN node -e "\
+const p = require('/app/packages/server/package.json'); \
+const deps = Object.fromEntries(Object.entries(p.dependencies || {}).filter(([n]) => !n.startsWith('@kang/'))); \
+require('fs').writeFileSync('/app/runtime-package.json', JSON.stringify({ \
+  name: 'kang-bang-server', version: p.version, private: true, type: 'module', \
+  dependencies: deps \
+}, null, 2)); \
+console.log('runtime deps:', Object.keys(deps).join(', ') || '(none)');"
+
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
 # `ws` is the only runtime dependency; node:sqlite is built into Node itself.
-COPY packages/server/package.json ./package.json
+COPY --from=build /app/runtime-package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund \
  && npm cache clean --force \
  && rm -f package-lock.json

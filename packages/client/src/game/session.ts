@@ -48,6 +48,7 @@ import {
   movementStep,
   recoilForShot,
   shotInterval,
+  surfaceFromIndex,
   wrapAngle,
   type KillFeedEntry,
   type LoadoutSelection,
@@ -65,7 +66,7 @@ import { FxSystem } from '../engine/fx.js';
 import { InputManager } from '../engine/input.js';
 import { buildMapMeshes, type MapMeshes } from '../engine/mapRenderer.js';
 import { Renderer } from '../engine/renderer.js';
-import { surfaceFromIndexClient } from './surfaces.js';
+
 import { ActorSet } from './actors.js';
 import { ViewModel } from './viewmodel.js';
 import { WorldEntities } from './world.js';
@@ -746,7 +747,7 @@ export class GameSession {
         break;
       }
       case EvType.Impact: {
-        const surface = surfaceFromIndexClient(ev.i);
+        const surface = surfaceFromIndex(ev.i);
         const idx = ev.j - 1;
         const w = WEAPONS[WEAPON_ORDER[idx] ?? 'pulse_ar'];
         // The event packs the surface normal as yaw/pitch.
@@ -847,7 +848,7 @@ export class GameSession {
       }
       case EvType.Footstep: {
         if (ev.a === this.selfId) break;
-        audio.footstep(surfaceFromIndexClient(ev.j), { x: ev.x, y: ev.y, z: ev.z, volume: 0.6 });
+        audio.footstep(surfaceFromIndex(ev.j), { x: ev.x, y: ev.y, z: ev.z, volume: 0.6 });
         break;
       }
       default:

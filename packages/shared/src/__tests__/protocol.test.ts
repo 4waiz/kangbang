@@ -35,20 +35,26 @@ import {
   sanitiseText,
   unpackPitch,
   unpackYaw,
+  SURFACES,
+  surfaceFromIndex,
+  surfaceIndex,
   validateJsonMessage,
   type EntitySnapshot,
   type InputCommand,
   type SelfState,
   type WireEvent,
 } from '../index.js';
-import { CLIENT_SURFACES } from '../../../client/src/game/surfaces.js';
 
 /**
- * The server's surface table, duplicated here deliberately. Surfaces travel as
- * a single byte, so if the client and server tables ever diverge the game plays
- * a glass impact on concrete and nothing errors. This test is the guard.
+ * The surface order this protocol version promises.
+ *
+ * Surfaces travel as a single byte, so reordering this list silently changes what
+ * every already-deployed client hears: a glass impact on concrete, with no error
+ * anywhere. The table now lives in `shared` and is imported by both sides, so the
+ * two cannot diverge - this literal is the separate guard against *reordering*,
+ * which sharing the table does not prevent.
  */
-const SERVER_SURFACES = [
+const WIRE_SURFACE_ORDER = [
   'metal',
   'concrete',
   'glass',
@@ -356,8 +362,25 @@ describe('time sync', () => {
 });
 
 describe('surface index table', () => {
-  it('matches between client and server', () => {
-    expect([...CLIENT_SURFACES]).toEqual(SERVER_SURFACES);
+  it('preserves the wire order this protocol version promises', () => {
+    expect([...SURFACES]).toEqual(WIRE_SURFACE_ORDER);
+  });
+
+  it('round-trips every surface through its wire index', () => {
+    for (const surface of SURFACES) {
+      expect(surfaceFromIndex(surfaceIndex(surface))).toBe(surface);
+    }
+  });
+
+  it('falls back to metal rather than throwing on a bad value', () => {
+    expect(surfaceIndex('not-a-surface')).toBe(0);
+    expect(surfaceFromIndex(-1)).toBe('metal');
+    expect(surfaceFromIndex(999)).toBe('metal');
+    expect(surfaceFromIndex(SURFACES.length)).toBe('metal');
+  });
+
+  it('fits in the single byte the event channel allocates', () => {
+    expect(SURFACES.length).toBeLessThanOrEqual(256);
   });
 });
 

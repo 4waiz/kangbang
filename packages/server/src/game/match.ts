@@ -48,6 +48,7 @@ import {
   maxTheoreticalSpeed,
   movementStep,
   shotInterval,
+  surfaceIndex,
   traceShot,
   weaponIndex,
   worldLineOfSight,
@@ -1533,16 +1534,8 @@ export class Match {
 // Utilities
 // ---------------------------------------------------------------------------
 
-const SURFACES = ['metal', 'concrete', 'glass', 'grate', 'energy', 'holo', 'panel', 'rubber', 'sand', 'flesh', 'air'];
-
-export function surfaceIndex(surface: string): number {
-  const i = SURFACES.indexOf(surface);
-  return i < 0 ? 0 : i;
-}
-
-export function surfaceFromIndex(i: number): string {
-  return SURFACES[i] ?? 'metal';
-}
+// `surfaceIndex` / `surfaceFromIndex` come from @kang/shared, so the client and
+// the server cannot disagree about what byte 4 means.
 
 const ABILITIES = ['dash', 'cloak', 'overshield', 'barrier', 'scan', 'turret', 'heal_field', 'grapple', 'emp', 'blink'];
 

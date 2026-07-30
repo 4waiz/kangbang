@@ -509,3 +509,44 @@ export function readEnum<T extends string>(
   if (typeof v === 'string' && (allowed as readonly string[]).includes(v)) return v as T;
   return fallback;
 }
+
+// ---------------------------------------------------------------------------
+// Surface table
+// ---------------------------------------------------------------------------
+
+/**
+ * Surfaces, in wire order.
+ *
+ * A surface travels as a single byte in the impact and footstep events, so both
+ * sides must agree on the index of every entry. This used to be defined twice -
+ * once in the server and once in the client - with a test asserting the two
+ * stayed equal. Defining it once here makes the divergence impossible instead of
+ * merely detectable, and it removes the reason a shared test had to reach into
+ * the client package. Append only: reordering changes the wire meaning.
+ */
+export const SURFACES = [
+  'metal',
+  'concrete',
+  'glass',
+  'grate',
+  'energy',
+  'holo',
+  'panel',
+  'rubber',
+  'sand',
+  'flesh',
+  'air',
+] as const;
+
+export type SurfaceName = (typeof SURFACES)[number];
+
+/** Wire index for a surface name; unknown names fall back to `metal`. */
+export function surfaceIndex(surface: string): number {
+  const i = (SURFACES as readonly string[]).indexOf(surface);
+  return i < 0 ? 0 : i;
+}
+
+/** Surface name for a wire index; out-of-range falls back to `metal`. */
+export function surfaceFromIndex(index: number): string {
+  return SURFACES[index] ?? 'metal';
+}

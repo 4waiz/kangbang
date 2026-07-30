@@ -216,7 +216,7 @@ export class App {
 
       const stats = assets.stats();
       // eslint-disable-next-line no-console
-      console.info(`[kang] ${stats.models} models, ${fmtNumber(stats.triangles)} triangles loaded`);
+      console.info(`[kang] ${stats.models} models, ${fmtNumber(stats.triangles)} triangles, ${stats.lods} LOD meshes loaded`);
       progress(1);
       window.setTimeout(() => this.showMenu(), 320);
     } catch (err) {
