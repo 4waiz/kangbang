@@ -1,0 +1,548 @@
+/* ==========================================================================
+   In-game HUD
+   Anchored to the four corners with the centre left clear. Every element is
+   pointer-events: none so the canvas keeps pointer lock.
+   ========================================================================== */
+
+.hud > * {
+  position: absolute;
+}
+
+/* -- top bar ------------------------------------------------------------- */
+
+.hud__top {
+  top: calc(14 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: calc(20 * var(--u));
+  min-width: calc(520 * var(--u));
+}
+
+.hud__score {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(14 * var(--u));
+}
+
+.hud__team {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+}
+
+.hud__team-name {
+  font-family: var(--font-display);
+  font-size: calc(12 * var(--u));
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+
+.hud__team-score {
+  font-size: calc(30 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 calc(14 * var(--u)) currentColor;
+}
+
+.hud__team--ion .hud__team-score,
+.hud__team--ion .hud__team-name {
+  color: var(--ion);
+}
+.hud__team--ember .hud__team-score,
+.hud__team--ember .hud__team-name {
+  color: var(--ember);
+}
+
+.hud__score-limit {
+  font-size: calc(10 * var(--u));
+  color: var(--ink-faint);
+  align-self: center;
+}
+
+.hud__timer {
+  text-align: center;
+  background: linear-gradient(180deg, rgba(7, 11, 20, 0.85), rgba(7, 11, 20, 0.4));
+  border: 1px solid var(--edge);
+  padding: calc(5 * var(--u)) calc(18 * var(--u)) calc(4 * var(--u));
+  clip-path: polygon(
+    calc(10 * var(--u)) 0,
+    calc(100% - calc(10 * var(--u))) 0,
+    100% 100%,
+    0 100%
+  );
+}
+
+.hud__timer-value {
+  font-size: calc(26 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.hud__timer-value.is-urgent {
+  color: var(--bad);
+  animation: pulse-glow 0.9s infinite;
+}
+
+.hud__timer-label {
+  font-family: var(--font-display);
+  font-size: calc(10 * var(--u));
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  margin-top: calc(2 * var(--u));
+}
+
+.hud__objectives {
+  display: flex;
+  gap: calc(8 * var(--u));
+  align-items: center;
+}
+
+.hud__obj {
+  --obj-color: var(--ink-faint);
+  min-width: calc(58 * var(--u));
+  border: 1px solid color-mix(in srgb, var(--obj-color) 55%, var(--edge));
+  background: rgba(7, 11, 20, 0.72);
+  padding: calc(3 * var(--u)) calc(7 * var(--u));
+}
+
+.hud__obj.is-contested {
+  animation: pulse-glow 0.6s infinite;
+}
+
+.hud__obj-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: calc(11 * var(--u));
+  letter-spacing: 0.16em;
+  color: var(--obj-color);
+  text-align: center;
+}
+
+.hud__obj-bar {
+  display: block;
+  height: calc(3 * var(--u));
+  background: rgba(0, 0, 0, 0.6);
+  margin-top: calc(2 * var(--u));
+}
+
+.hud__obj-bar i {
+  display: block;
+  height: 100%;
+  background: var(--obj-color);
+}
+
+/* -- kill feed ----------------------------------------------------------- */
+
+.hud__feed {
+  top: calc(96 * var(--u));
+  right: calc(18 * var(--u));
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--u));
+  align-items: flex-end;
+  max-width: calc(420 * var(--u));
+}
+
+.hud__feed-row {
+  display: flex;
+  align-items: center;
+  gap: calc(7 * var(--u));
+  background: rgba(5, 8, 14, 0.72);
+  border-right: calc(2 * var(--u)) solid var(--edge);
+  padding: calc(3 * var(--u)) calc(9 * var(--u));
+  font-family: var(--font-display);
+  font-size: calc(13 * var(--u));
+  letter-spacing: 0.06em;
+}
+
+.hud__feed-row.is-self {
+  border-right-color: var(--ion);
+  background: rgba(10, 30, 40, 0.8);
+}
+
+.hud__feed-icon {
+  display: inline-flex;
+  opacity: 0.9;
+}
+
+.hud__feed-tag {
+  font-family: var(--font-mono);
+  font-size: calc(9 * var(--u));
+  letter-spacing: 0.1em;
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  padding: 0 calc(3 * var(--u));
+}
+
+/* -- centre notices ------------------------------------------------------ */
+
+.hud__notice {
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: calc(5 * var(--u));
+  align-items: center;
+  text-align: center;
+}
+
+.hud__notice-row {
+  font-family: var(--font-display);
+  font-size: calc(16 * var(--u));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(0, 0, 0, 0.9);
+}
+
+.hud__notice-row.is-big {
+  font-size: calc(30 * var(--u));
+  color: var(--ion);
+}
+
+/* -- minimap frame (canvas draws inside it) ----------------------------- */
+
+.hud__minimap-frame {
+  --minimap-size: calc(170 * var(--u));
+  top: calc(64 * var(--u));
+  right: calc(18 * var(--u));
+  width: var(--minimap-size);
+  height: var(--minimap-size);
+  pointer-events: none;
+}
+
+.hud__minimap-label {
+  position: absolute;
+  bottom: calc(-16 * var(--u));
+  right: 0;
+  font-size: calc(9 * var(--u));
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* -- bottom left: vitals + abilities ------------------------------------ */
+
+.hud__bottom-left {
+  bottom: calc(22 * var(--u));
+  left: calc(24 * var(--u));
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--u));
+}
+
+.hud__vitals {
+  display: flex;
+  flex-direction: column;
+  gap: calc(5 * var(--u));
+}
+
+.hud__vital-row {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+}
+
+.hud__vital-label {
+  font-family: var(--font-display);
+  font-size: calc(11 * var(--u));
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+  width: calc(20 * var(--u));
+}
+
+.hud__vital-bar {
+  width: calc(220 * var(--u));
+  height: calc(11 * var(--u));
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid var(--edge);
+  clip-path: polygon(0 0, 100% 0, calc(100% - calc(6 * var(--u))) 100%, 0 100%);
+  overflow: hidden;
+}
+
+.hud__vital-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4be08a, #a8ffcf);
+  box-shadow: 0 0 calc(12 * var(--u)) rgba(75, 224, 138, 0.6);
+  transition: width 0.12s linear;
+}
+
+.hud__vital-bar--shield i {
+  background: linear-gradient(90deg, var(--ion), #b8f4ff);
+  box-shadow: 0 0 calc(12 * var(--u)) rgba(44, 232, 255, 0.6);
+}
+
+.hud__vital-value {
+  font-size: calc(20 * var(--u));
+  font-weight: 700;
+  min-width: calc(44 * var(--u));
+}
+
+.hud__vital-value.is-low {
+  color: var(--bad);
+  animation: pulse-glow 0.7s infinite;
+}
+
+.hud__abilities {
+  display: flex;
+  gap: calc(10 * var(--u));
+}
+
+.hud__ability {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: calc(2 * var(--u)) calc(7 * var(--u));
+  align-items: center;
+  background: rgba(5, 8, 14, 0.6);
+  border: 1px solid var(--edge);
+  padding: calc(5 * var(--u)) calc(9 * var(--u));
+  min-width: calc(150 * var(--u));
+}
+
+.hud__ability-key {
+  grid-row: span 2;
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--edge);
+  font-size: calc(12 * var(--u));
+  color: var(--ink-dim);
+}
+
+.hud__ability.is-ready {
+  border-color: color-mix(in srgb, var(--ion) 60%, var(--edge));
+  box-shadow: 0 0 calc(14 * var(--u)) rgba(44, 232, 255, 0.25);
+}
+
+.hud__ability.is-ready .hud__ability-key {
+  color: var(--ion);
+  border-color: var(--ion);
+}
+
+.hud__ability-name {
+  font-family: var(--font-display);
+  font-size: calc(11 * var(--u));
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+}
+
+.hud__ability-ring {
+  height: calc(4 * var(--u));
+  background: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.hud__ability-ring i {
+  display: block;
+  height: 100%;
+  background: var(--ion);
+  transition: width 0.15s linear;
+}
+
+.hud__ability--ult .hud__ability-ring i {
+  background: linear-gradient(90deg, var(--violet), var(--amber));
+}
+
+/* -- bottom right: weapon ----------------------------------------------- */
+
+.hud__bottom-right {
+  bottom: calc(22 * var(--u));
+  right: calc(24 * var(--u));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(8 * var(--u));
+}
+
+.hud__weapon {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.hud__weapon-icon {
+  opacity: 0.85;
+}
+
+.hud__weapon-text {
+  text-align: right;
+}
+
+.hud__weapon-name {
+  font-family: var(--font-display);
+  font-size: calc(14 * var(--u));
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+
+.hud__ammo {
+  font-size: calc(38 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.hud__ammo #hud-ammo.is-low,
+.hud__ammo span.is-low {
+  color: var(--bad);
+}
+
+.hud__ammo-sep {
+  color: var(--ink-faint);
+  font-size: calc(22 * var(--u));
+  margin: 0 calc(2 * var(--u));
+}
+
+.hud__reserve {
+  font-size: calc(20 * var(--u));
+  color: var(--ink-dim);
+}
+
+.hud__slots {
+  display: flex;
+  gap: calc(4 * var(--u));
+}
+
+.hud__slot {
+  width: calc(20 * var(--u));
+  height: calc(20 * var(--u));
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--edge);
+  font-size: calc(10 * var(--u));
+  color: var(--ink-faint);
+}
+
+.hud__slot.is-active {
+  border-color: var(--ion);
+  color: var(--ion);
+  background: rgba(44, 232, 255, 0.12);
+}
+
+/* -- streak, diagnostics ------------------------------------------------- */
+
+.hud__streak {
+  bottom: calc(120 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: calc(15 * var(--u));
+  letter-spacing: 0.26em;
+  color: var(--amber);
+  text-shadow: 0 0 calc(16 * var(--u)) rgba(255, 176, 58, 0.5);
+}
+
+.hud__diag {
+  top: calc(14 * var(--u));
+  left: calc(18 * var(--u));
+  font-size: calc(11 * var(--u));
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+
+/* -- death screen -------------------------------------------------------- */
+
+.hud__respawn {
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: calc(6 * var(--u));
+  background: radial-gradient(ellipse at center, rgba(60, 8, 14, 0.35), rgba(5, 7, 13, 0.8));
+}
+
+.hud__respawn-title {
+  font-family: var(--font-display);
+  font-size: calc(46 * var(--u));
+  letter-spacing: 0.2em;
+  color: var(--bad);
+  text-shadow: 0 0 calc(30 * var(--u)) rgba(255, 77, 94, 0.5);
+}
+
+.hud__respawn-by {
+  font-size: calc(15 * var(--u));
+  color: var(--ink-dim);
+}
+
+.hud__respawn-timer {
+  font-size: calc(60 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hud__respawn-hint {
+  font-size: calc(11 * var(--u));
+  color: var(--ink-faint);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* -- overlays ------------------------------------------------------------ */
+
+.hud__vignette {
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(140, 10, 24, 0.85) 100%);
+  opacity: 0;
+  transition: opacity 0.2s linear;
+}
+
+.hud__scope {
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0 24vh, rgba(0, 0, 0, 0.96) 24.4vh);
+}
+
+.hud__scope::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(44, 232, 255, 0.18);
+  clip-path: circle(24vh at center);
+}
+
+.hud__subtitles {
+  bottom: calc(150 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 60vw;
+  text-align: center;
+  font-size: calc(15 * var(--u));
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.7);
+  padding: calc(5 * var(--u)) calc(14 * var(--u));
+}
+
+.hud__subtitles:empty {
+  display: none;
+}
+
+/* -- narrow viewports ---------------------------------------------------- */
+
+@media (max-width: 1400px) {
+  .hud__top {
+    min-width: calc(420 * var(--u));
+  }
+  .hud__vital-bar {
+    width: calc(170 * var(--u));
+  }
+}
+
+@media (max-width: 1100px) {
+  .hud__ability {
+    min-width: calc(120 * var(--u));
+  }
+  .hud__ammo {
+    font-size: calc(30 * var(--u));
+  }
+  .hud__feed {
+    max-width: calc(300 * var(--u));
+  }
+}

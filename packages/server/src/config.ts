@@ -66,7 +66,7 @@ export const config = {
   },
 
   antiCheat: {
-    moveTolerance: num('MOVE_TOLERANCE', 1.35, 1, 4),
+    moveTolerance: num('MOVE_TOLERANCE', 1.05, 1, 4),
     msgRateLimit: Math.round(num('MSG_RATE_LIMIT', 180, 20, 2000)),
     logSuspicious: bool('LOG_SUSPICIOUS', true),
   },

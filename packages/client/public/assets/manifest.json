@@ -1,0 +1,245 @@
+{
+  "generated": "blender",
+  "generator": "assets/scripts/gen_*.py",
+  "note": "Every model here is generated from source by the Blender scripts in assets/scripts. Regenerate with: npm run assets",
+  "count": 59,
+  "totalBytes": 618200,
+  "models": {
+    "char_arms_fp": {
+      "file": "models/char_arms_fp.glb",
+      "bytes": 12440
+    },
+    "char_engineer": {
+      "file": "models/char_engineer.glb",
+      "bytes": 30308
+    },
+    "char_phantom": {
+      "file": "models/char_phantom.glb",
+      "bytes": 29100
+    },
+    "char_spectre": {
+      "file": "models/char_spectre.glb",
+      "bytes": 30872
+    },
+    "char_titan": {
+      "file": "models/char_titan.glb",
+      "bytes": 32420
+    },
+    "char_vanguard": {
+      "file": "models/char_vanguard.glb",
+      "bytes": 28552
+    },
+    "char_warden": {
+      "file": "models/char_warden.glb",
+      "bytes": 30696
+    },
+    "dep_barrier": {
+      "file": "models/dep_barrier.glb",
+      "bytes": 4860
+    },
+    "dep_dome": {
+      "file": "models/dep_dome.glb",
+      "bytes": 5572
+    },
+    "dep_field": {
+      "file": "models/dep_field.glb",
+      "bytes": 6088
+    },
+    "dep_grenade": {
+      "file": "models/dep_grenade.glb",
+      "bytes": 5092
+    },
+    "dep_turret": {
+      "file": "models/dep_turret.glb",
+      "bytes": 6600
+    },
+    "obj_core": {
+      "file": "models/obj_core.glb",
+      "bytes": 8580
+    },
+    "obj_zone_marker": {
+      "file": "models/obj_zone_marker.glb",
+      "bytes": 5708
+    },
+    "pickup_ammo": {
+      "file": "models/pickup_ammo.glb",
+      "bytes": 4460
+    },
+    "pickup_health": {
+      "file": "models/pickup_health.glb",
+      "bytes": 3952
+    },
+    "pickup_pedestal": {
+      "file": "models/pickup_pedestal.glb",
+      "bytes": 5300
+    },
+    "pickup_shield": {
+      "file": "models/pickup_shield.glb",
+      "bytes": 4140
+    },
+    "prop_ac_unit": {
+      "file": "models/prop_ac_unit.glb",
+      "bytes": 5280
+    },
+    "prop_antenna": {
+      "file": "models/prop_antenna.glb",
+      "bytes": 5380
+    },
+    "prop_barrel": {
+      "file": "models/prop_barrel.glb",
+      "bytes": 5292
+    },
+    "prop_conveyor_arm": {
+      "file": "models/prop_conveyor_arm.glb",
+      "bytes": 5724
+    },
+    "prop_coolant_tank": {
+      "file": "models/prop_coolant_tank.glb",
+      "bytes": 7716
+    },
+    "prop_crane": {
+      "file": "models/prop_crane.glb",
+      "bytes": 7700
+    },
+    "prop_crate_stack": {
+      "file": "models/prop_crate_stack.glb",
+      "bytes": 5856
+    },
+    "prop_holo_billboard": {
+      "file": "models/prop_holo_billboard.glb",
+      "bytes": 4764
+    },
+    "prop_holo_globe": {
+      "file": "models/prop_holo_globe.glb",
+      "bytes": 7056
+    },
+    "prop_holo_sign": {
+      "file": "models/prop_holo_sign.glb",
+      "bytes": 4580
+    },
+    "prop_hovercar": {
+      "file": "models/prop_hovercar.glb",
+      "bytes": 10712
+    },
+    "prop_pipe_run": {
+      "file": "models/prop_pipe_run.glb",
+      "bytes": 13508
+    },
+    "prop_reactor_ring": {
+      "file": "models/prop_reactor_ring.glb",
+      "bytes": 6384
+    },
+    "prop_satellite": {
+      "file": "models/prop_satellite.glb",
+      "bytes": 8784
+    },
+    "prop_spawn_arch": {
+      "file": "models/prop_spawn_arch.glb",
+      "bytes": 4892
+    },
+    "prop_spire_collar": {
+      "file": "models/prop_spire_collar.glb",
+      "bytes": 6236
+    },
+    "prop_streetlight": {
+      "file": "models/prop_streetlight.glb",
+      "bytes": 5872
+    },
+    "prop_strut": {
+      "file": "models/prop_strut.glb",
+      "bytes": 3476
+    },
+    "prop_terminal": {
+      "file": "models/prop_terminal.glb",
+      "bytes": 5788
+    },
+    "prop_vent": {
+      "file": "models/prop_vent.glb",
+      "bytes": 4940
+    },
+    "team_marker": {
+      "file": "models/team_marker.glb",
+      "bytes": 2996
+    },
+    "wpn_arc_launcher": {
+      "file": "models/wpn_arc_launcher.glb",
+      "bytes": 14176
+    },
+    "wpn_arc_launcher_world": {
+      "file": "models/wpn_arc_launcher_world.glb",
+      "bytes": 13984
+    },
+    "wpn_burst_carbine": {
+      "file": "models/wpn_burst_carbine.glb",
+      "bytes": 11228
+    },
+    "wpn_burst_carbine_world": {
+      "file": "models/wpn_burst_carbine_world.glb",
+      "bytes": 10952
+    },
+    "wpn_energy_pistol": {
+      "file": "models/wpn_energy_pistol.glb",
+      "bytes": 9308
+    },
+    "wpn_energy_pistol_world": {
+      "file": "models/wpn_energy_pistol_world.glb",
+      "bytes": 9036
+    },
+    "wpn_ion_shotgun": {
+      "file": "models/wpn_ion_shotgun.glb",
+      "bytes": 12796
+    },
+    "wpn_ion_shotgun_world": {
+      "file": "models/wpn_ion_shotgun_world.glb",
+      "bytes": 12552
+    },
+    "wpn_particle_lmg": {
+      "file": "models/wpn_particle_lmg.glb",
+      "bytes": 13692
+    },
+    "wpn_particle_lmg_world": {
+      "file": "models/wpn_particle_lmg_world.glb",
+      "bytes": 13428
+    },
+    "wpn_plasma_blade": {
+      "file": "models/wpn_plasma_blade.glb",
+      "bytes": 8652
+    },
+    "wpn_plasma_blade_world": {
+      "file": "models/wpn_plasma_blade_world.glb",
+      "bytes": 8488
+    },
+    "wpn_plasma_smg": {
+      "file": "models/wpn_plasma_smg.glb",
+      "bytes": 10384
+    },
+    "wpn_plasma_smg_world": {
+      "file": "models/wpn_plasma_smg_world.glb",
+      "bytes": 10120
+    },
+    "wpn_pulse_ar": {
+      "file": "models/wpn_pulse_ar.glb",
+      "bytes": 11112
+    },
+    "wpn_pulse_ar_world": {
+      "file": "models/wpn_pulse_ar_world.glb",
+      "bytes": 10848
+    },
+    "wpn_rail_sniper": {
+      "file": "models/wpn_rail_sniper.glb",
+      "bytes": 14616
+    },
+    "wpn_rail_sniper_world": {
+      "file": "models/wpn_rail_sniper_world.glb",
+      "bytes": 14340
+    },
+    "wpn_tactical_revolver": {
+      "file": "models/wpn_tactical_revolver.glb",
+      "bytes": 10536
+    },
+    "wpn_tactical_revolver_world": {
+      "file": "models/wpn_tactical_revolver_world.glb",
+      "bytes": 10276
+    }
+  }
+}

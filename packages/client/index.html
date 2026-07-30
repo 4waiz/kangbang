@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#070b14" />
+    <meta
+      name="description"
+      content="NEON STRIKE - a fast, original browser FPS set in orbital facilities and neon cities. Six classes, ten weapons, eight modes."
+    />
+    <title>NEON STRIKE</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070b14'/%3E%3Cpath d='M16 3 27 9v14l-11 6L5 23V9z' fill='none' stroke='%232ce8ff' stroke-width='2.2'/%3E%3Cpath d='M17.6 8.5 11 17h4.2l-1 6.5 6.8-9h-4.3z' fill='%232ce8ff'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <!-- The renderer canvas sits behind every UI layer and is never removed. -->
+    <canvas id="scene" aria-hidden="true"></canvas>
+
+    <!-- 2D overlays drawn by the HUD (crosshair, hit markers, minimap). -->
+    <canvas id="overlay" aria-hidden="true"></canvas>
+
+    <div id="hud" class="hud" hidden></div>
+    <div id="ui" class="ui"></div>
+
+    <noscript>
+      <div class="noscript">
+        <h1>NEON STRIKE</h1>
+        <p>This game needs JavaScript and WebGL. Enable JavaScript and reload.</p>
+      </div>
+    </noscript>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
