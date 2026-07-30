@@ -19,7 +19,7 @@
 import { WebSocket } from 'ws';
 
 const args = parseArgs(process.argv.slice(2));
-const URL_BASE = args.url ?? process.env.NEON_URL ?? 'http://127.0.0.1:2567';
+const URL_BASE = args.url ?? process.env.KANG_URL ?? 'http://127.0.0.1:2567';
 const WS_BASE = URL_BASE.replace(/^http/, 'ws') + '/ws';
 const CLIENT_COUNT = int(args.clients, 2, 1, 16);
 const SECONDS = int(args.seconds, 25, 3, 600);

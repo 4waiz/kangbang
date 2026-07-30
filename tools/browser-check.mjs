@@ -25,10 +25,13 @@ import puppeteer from 'puppeteer-core';
 
 const args = process.argv.slice(2);
 const argOf = (name, fallback) => {
+  // Accept both `--name value` and `--name=value`.
+  const eq = args.find((a) => a.startsWith(`--${name}=`));
+  if (eq) return eq.slice(name.length + 3);
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : fallback;
 };
-const URL_BASE = argOf('url', process.env.NEON_CLIENT_URL ?? 'http://localhost:5173');
+const URL_BASE = argOf('url', process.env.KANG_CLIENT_URL ?? 'http://localhost:5173');
 const HEADFUL = args.includes('--headful');
 const SHOT_DIR = argOf('shots', '');
 

@@ -7,7 +7,24 @@
  *
  * Weapon icons are deliberately silhouette-first so a kill-feed entry reads at
  * 22px, which is the size that actually matters.
+ *
+ * Every public helper returns a real `HTMLSpanElement`, not a markup string.
+ * Returning a string made it possible to pass an icon into a child position,
+ * where `append()` correctly turns an unknown string into a text node - and the
+ * markup rendered as literal `<svg ...>` text in the UI. An element cannot be
+ * mistaken for text, so that whole class of bug is gone. Use `iconMarkup()`
+ * only where an `innerHTML` sink genuinely needs a string (the canvas HUD).
  */
+
+/** Build the wrapper span that every public icon helper returns. */
+function wrap(color: string, inner: string, verticalAlign = false): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.style.color = color;
+  span.style.display = 'inline-flex';
+  if (verticalAlign) span.style.verticalAlign = 'middle';
+  span.innerHTML = inner;
+  return span;
+}
 
 function svg(size: number, color: string, body: string, viewBox = '0 0 48 24'): string {
   return `<svg width="${size}" height="${(size * 24) / 48}" viewBox="${viewBox}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${body}</svg>`;
@@ -54,11 +71,11 @@ const WEAPON_TO_ICON: Record<string, string> = {
   sentry_turret: 'lmg',
 };
 
-export function weaponIcon(weaponId: string, size = 32, color = 'currentColor'): string {
+export function weaponIcon(weaponId: string, size = 32, color = 'currentColor'): HTMLSpanElement {
   const key = WEAPON_TO_ICON[weaponId] ?? weaponId;
   const body = WEAPON_PATHS[key];
-  if (!body) return square(size, color, '<circle cx="12" cy="12" r="8"/>');
-  return `<span style="color:${color};display:inline-flex">${svg(size, 'currentColor', body)}</span>`;
+  if (!body) return wrap(color, square(size, 'currentColor', '<circle cx="12" cy="12" r="8"/>'));
+  return wrap(color, svg(size, 'currentColor', body));
 }
 
 const CLASS_PATHS: Record<string, string> = {
@@ -76,9 +93,9 @@ const CLASS_PATHS: Record<string, string> = {
   engineer: '<rect x="6" y="7" width="12" height="8" rx="1" fill="currentColor" fill-opacity=".2"/><rect x="6" y="7" width="12" height="8" rx="1"/><path d="M9 7V3M15 7V3M12 7V4"/><path d="M6 15l-2 6M18 15l2 6"/>',
 };
 
-export function classIcon(classId: string, size = 28, color = 'currentColor'): string {
+export function classIcon(classId: string, size = 28, color = 'currentColor'): HTMLSpanElement {
   const body = CLASS_PATHS[classId] ?? CLASS_PATHS.vanguard;
-  return `<span style="color:${color};display:inline-flex">${square(size, 'currentColor', body)}</span>`;
+  return wrap(color, square(size, 'currentColor', body));
 }
 
 const MODE_PATHS: Record<string, string> = {
@@ -92,9 +109,9 @@ const MODE_PATHS: Record<string, string> = {
   custom: '<path d="M12 3l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/><path d="M12 17v4"/>',
 };
 
-export function modeIcon(iconKey: string, size = 24, color = 'currentColor'): string {
+export function modeIcon(iconKey: string, size = 24, color = 'currentColor'): HTMLSpanElement {
   const body = MODE_PATHS[iconKey] ?? MODE_PATHS.tdm;
-  return `<span style="color:${color};display:inline-flex">${square(size, 'currentColor', body)}</span>`;
+  return wrap(color, square(size, 'currentColor', body));
 }
 
 /** The KANG BANG mark: a hex plate with a bolt cut through it. */
@@ -109,7 +126,7 @@ export function logoMark(size = 64, color = '#2ce8ff'): string {
 export function logoWordmark(): string {
   return `<span class="logo">
     <span class="logo__mark">${logoMark(46)}</span>
-    <span class="logo__text"><b>NEON</b><i>STRIKE</i></span>
+    <span class="logo__text"><b>KANG</b><i>BANG</i></span>
   </span>`;
 }
 
@@ -135,13 +152,13 @@ const UI_PATHS: Record<string, string> = {
   crosshair: '<circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
 };
 
-export function uiIcon(key: string, size = 20, color = 'currentColor'): string {
+export function uiIcon(key: string, size = 20, color = 'currentColor'): HTMLSpanElement {
   const body = UI_PATHS[key] ?? UI_PATHS.bolt;
-  return `<span style="color:${color};display:inline-flex;vertical-align:middle">${square(size, 'currentColor', body)}</span>`;
+  return wrap(color, square(size, 'currentColor', body), true);
 }
 
 /** Banner/profile-icon glyphs, drawn as abstract emblems. */
-export function glyphIcon(glyph: string, size = 32, color = '#4fd8ff'): string {
+export function glyphIcon(glyph: string, size = 32, color = '#4fd8ff'): HTMLSpanElement {
   const bodies: Record<string, string> = {
     grid: '<path d="M3 3h18v18H3z"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',
     pulse: '<path d="M2 12h4l3-7 4 14 3-7h6"/>',
@@ -162,5 +179,15 @@ export function glyphIcon(glyph: string, size = 32, color = '#4fd8ff'): string {
     reactor: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/>',
   };
   const body = bodies[glyph] ?? bodies.grid;
-  return `<span style="color:${color};display:inline-flex">${square(size, 'currentColor', body)}</span>`;
+  return wrap(color, square(size, 'currentColor', body));
+}
+
+/**
+ * Serialised form of an icon, for the two places that build a DOM subtree with
+ * `innerHTML` (the kill feed row and the HUD weapon badge). Prefer the element
+ * helpers everywhere else - a string in a child position silently renders as
+ * visible markup.
+ */
+export function iconMarkup(icon: HTMLSpanElement): string {
+  return icon.outerHTML;
 }

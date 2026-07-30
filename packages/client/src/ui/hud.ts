@@ -23,7 +23,7 @@ import {
 } from '@kang/shared';
 import { store } from '../state/store.js';
 import type { HudSnapshot } from '../game/session.js';
-import { weaponIcon } from './icons.js';
+import { iconMarkup, weaponIcon } from './icons.js';
 
 interface Notice {
   text: string;
@@ -274,7 +274,7 @@ export class Hud {
       const victimColor = entry.victimTeam ? TEAM_COLORS_CSS[entry.victimTeam] : 'var(--ink)';
       const isMe = entry.attacker === store.name || entry.victim === store.name;
       if (isMe) node.classList.add('is-self');
-      const icon = weaponIcon(entry.weapon, 22, entry.headshot ? '#ffd76b' : '#cfe0f5');
+      const icon = iconMarkup(weaponIcon(entry.weapon, 22, entry.headshot ? '#ffd76b' : '#cfe0f5'));
       const tags = [
         entry.headshot ? '<span class="hud__feed-tag">HS</span>' : '',
         entry.wallbang ? '<span class="hud__feed-tag">WALL</span>' : '',
@@ -340,7 +340,7 @@ export class Hud {
       if (this.lastText.get(iconKey) !== '1') {
         this.lastText.delete('icon:prev');
         this.lastText.set(iconKey, '1');
-        this.el['weapon-icon'].innerHTML = weaponIcon(hud.weapon.id, 40, '#cfe0f5');
+        this.el['weapon-icon'].replaceChildren(weaponIcon(hud.weapon.id, 40, '#cfe0f5'));
       }
       const slots = `${hud.slot}`;
       if (this.lastText.get('slots') !== slots) {

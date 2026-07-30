@@ -823,7 +823,7 @@ export class App {
             this.applyLoadoutToServer();
           },
         },
-        el('span', { html: classIcon(id, 26, locked ? '#66768f' : '#4fd8ff') }),
+        classIcon(id, 26, locked ? '#66768f' : '#4fd8ff'),
         el(
           'span',
           { class: 'grow' },
@@ -831,7 +831,7 @@ export class App {
           el('br'),
           el('span', { class: 'pick__meta' }, locked ? `LOCKED · LV ${cls.unlockLevel}` : cls.role.toUpperCase()),
         ),
-        locked ? el('span', { html: uiIcon('lock', 16, '#66768f') }) : null,
+        locked ? uiIcon('lock', 16, '#66768f') : null,
       );
       list.appendChild(btn);
     }
@@ -876,7 +876,7 @@ export class App {
         return el(
           'div',
           { class: 'row', style: { marginTop: '8px' } },
-          el('span', { html: weaponIcon(w.id, 34) }),
+          weaponIcon(w.id, 34),
           el(
             'div',
             { class: 'grow' },
@@ -995,7 +995,7 @@ export class App {
                 style: { background: `#${(skin.accent ?? skin.color ?? 0x666666).toString(16).padStart(6, '0')}` },
               }),
               el('span', { class: 'swatch__name' }, skin.name),
-              !unlocked ? el('span', { class: 'swatch__lock', html: uiIcon('lock', 12, '#66768f') }) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#66768f')) : null,
             );
           }),
         ),
@@ -1025,7 +1025,7 @@ export class App {
               renderWeaponDetail(w);
             },
           },
-          el('span', { html: weaponIcon(w.id, 36, locked ? '#66768f' : '#cfe0f5') }),
+          weaponIcon(w.id, 36, locked ? '#66768f' : '#cfe0f5'),
           el(
             'span',
             { class: 'grow' },
@@ -1033,7 +1033,7 @@ export class App {
             el('br'),
             el('span', { class: 'pick__meta' }, locked ? `LV ${w.unlockLevel}` : `${w.damage} DMG · ${w.rpm} RPM`),
           ),
-          locked ? el('span', { html: uiIcon('lock', 16, '#66768f') }) : null,
+          locked ? uiIcon('lock', 16, '#66768f') : null,
         );
         weaponList.appendChild(btn);
       }
@@ -1128,10 +1128,10 @@ export class App {
                 },
               },
               c.glyph
-                ? el('span', { html: glyphIcon(c.glyph, 26, swatchColor) })
+                ? glyphIcon(c.glyph, 26, swatchColor)
                 : el('span', { class: 'swatch__chip', style: { background: swatchColor } }),
               el('span', { class: 'swatch__name' }, c.name),
-              !unlocked ? el('span', { class: 'swatch__lock', html: uiIcon('lock', 12, '#66768f') }) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#66768f')) : null,
             );
           }),
         ),
@@ -1295,7 +1295,7 @@ export class App {
               return el(
                 'tr',
                 {},
-                el('td', {}, el('span', { html: weaponIcon(id, 22) }), ' ', w.short),
+                el('td', {}, weaponIcon(id, 22), ' ', w.short),
                 el('td', { class: 'num' }, String(s.kills ?? 0)),
                 el('td', { class: 'num' }, String(s.headshots ?? 0)),
                 el('td', { class: 'num' }, `${acc}%`),
@@ -1322,7 +1322,7 @@ export class App {
               el(
                 'div',
                 { class: 'row row--between' },
-                el('div', { class: 'row' }, el('span', { html: classIcon(id, 24) }), el('span', { class: 'pick__name' }, cls.name)),
+                el('div', { class: 'row' }, classIcon(id, 24), el('span', { class: 'pick__name' }, cls.name)),
                 chip(`MASTERY ${m.level}`, 'chip--ion'),
               ),
               el('div', { style: { marginTop: '8px' } }, bar(m.progress ?? 0, { class: 'bar--slim' })),
@@ -1389,7 +1389,7 @@ export class App {
                       'tr',
                       { class: e.playerId === store.profile?.id ? 'is-self' : '' },
                       el('td', { class: 'num' }, String(e.rank)),
-                      el('td', {}, el('span', { html: glyphIcon(COSMETICS[e.icon]?.glyph ?? 'chevron1', 18) }), ' ', e.name),
+                      el('td', {}, glyphIcon(COSMETICS[e.icon]?.glyph ?? 'chevron1', 18), ' ', e.name),
                       el('td', { class: 'num' }, String(e.level)),
                       el('td', { class: 'num' }, metric === 'kd' || metric === 'accuracy' || metric === 'headshotRate' ? e.value.toFixed(2) : fmtNumber(e.value)),
                     ),
@@ -1979,7 +1979,7 @@ export class App {
             el(
               'div',
               { class: `roster__row${p.name === store.name ? ' is-self' : ''}` },
-              el('span', { html: classIcon(p.classId, 18, team ? TEAM_COLORS_CSS[team] : '#9aa7bd') }),
+              classIcon(p.classId, 18, team ? TEAM_COLORS_CSS[team] : '#9aa7bd'),
               el('span', {}, p.name, p.bot ? el('span', { class: 'faint' }, ' · BOT') : null),
               el('span', { class: 'roster__level' }, `LV ${p.accountLevel}`),
               p.ready ? chip('READY', 'chip--good') : chip('...'),
@@ -2008,7 +2008,7 @@ export class App {
       el(
         'div',
         { class: 'row', style: { marginTop: '10px' } },
-        el('span', { html: classIcon(this.selectedClass, 30) }),
+        classIcon(this.selectedClass, 30),
         el('div', { class: 'grow' }, el('div', { class: 'pick__name' }, CLASSES[this.selectedClass].name), el('div', { class: 'pick__meta' }, CLASSES[this.selectedClass].role.toUpperCase())),
       ),
       button('CHANGE CLASS', () => this.showClassSelect(true), { class: 'btn--block' }),
@@ -2170,7 +2170,7 @@ export class App {
                 'tr',
                 { class: p.name === store.name ? 'is-self' : '' },
                 el('td', {}, p.name, p.bot ? el('span', { class: 'faint' }, ' BOT') : null, !p.alive ? el('span', { class: 'faint' }, ' ·') : null),
-                el('td', {}, el('span', { html: classIcon(p.classId, 18) })),
+                el('td', {}, classIcon(p.classId, 18)),
                 el('td', { class: 'num' }, String(p.kills)),
                 el('td', { class: 'num' }, String(p.deaths)),
                 el('td', { class: 'num' }, String(p.assists)),

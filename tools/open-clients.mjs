@@ -23,12 +23,15 @@ import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const argOf = (name, fallback) => {
-  const hit = args.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : fallback;
+  // Accept both `--name value` and `--name=value`.
+  const eq = args.find((a) => a.startsWith(`--${name}=`));
+  if (eq) return eq.slice(name.length + 3);
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : fallback;
 };
 
 const COUNT = Math.max(1, Math.min(8, Number(argOf('count', '2')) || 2));
-const URL_BASE = argOf('url', process.env.NEON_CLIENT_URL ?? 'http://localhost:5173');
+const URL_BASE = argOf('url', process.env.KANG_CLIENT_URL ?? 'http://localhost:5173');
 const ROOM_CODE = argOf('code', '');
 const KEEP = args.includes('--keep');
 
