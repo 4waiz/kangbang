@@ -67,6 +67,9 @@ docker compose up --build               # 24/24 through nginx at :8080
 
 - [x] Docker: two multi-stage images, both healthchecked, server port unpublished
 - [x] `docker compose up --build` → playable at `http://localhost:8080`
+- [x] Single-container image (`docker/allinone.Dockerfile`) for one-port platforms —
+      **24/24 browser checks verified against it**, WebSocket included
+- [x] `fly.toml` committed and ready for `fly deploy`
 - [x] Postgres profile available
 - [x] `.env.example` complete, with no real secret
 - [x] Production builds verified booting and serving

@@ -94,6 +94,62 @@ npm install pg -w @kang/server
 
 ---
 
+## Single container (Fly.io, Railway, Render, Cloud Run)
+
+Platforms that give you one container and one port cannot run the two-service
+compose stack. For those, `docker/allinone.Dockerfile` builds one image in which
+the game server also serves the client bundle (`SERVE_CLIENT=true`), with an SPA
+fallback for deep links, long cache headers on fingerprinted assets, and the
+served path confined to the bundle root.
+
+```bash
+docker build -f docker/allinone.Dockerfile -t kangbang:allinone .
+export SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+docker run -p 8080:8080 \
+  -e SESSION_SECRET="$SESSION_SECRET" \
+  -e CORS_ORIGIN=http://localhost:8080 \
+  kangbang:allinone
+```
+
+Verified: 24/24 browser checks pass against this image on a single port, including
+the WebSocket.
+
+The two-container compose stack is still the better shape for a real deployment —
+nginx is a better static server than Node, and the two scale independently. Use
+the single image when a second service costs more than nginx is worth.
+
+### Fly.io
+
+`fly.toml` is committed and ready. Fly suits this well: a long-lived process for
+the 60 Hz tick loop, WebSockets with no configuration, and a volume for SQLite.
+
+```bash
+fly auth login
+fly launch --no-deploy --copy-config --name kang-bang
+fly volumes create kang_data --size 1 --region lhr
+fly secrets set SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+fly deploy
+fly open
+```
+
+Two settings in `fly.toml` are deliberate and worth not changing casually:
+
+- `auto_stop_machines = false` — a game server must not be stopped between
+  matches, and a cold start mid-session drops everyone in the room.
+- `min_machines_running = 1` — same reason.
+
+Update `CORS_ORIGIN` in `fly.toml` when you attach a custom domain.
+
+### Why serverless does not work
+
+Vercel, Netlify Functions, Lambda and friends cannot host the server. A function
+cannot hold a persistent WebSocket or run a continuous 60 Hz simulation loop; both
+are load-bearing here. The *client* is static and can go on any of them — point
+`VITE_SERVER_URL` at wherever the server actually runs, and add that origin to
+`CORS_ORIGIN`.
+
+---
+
 ## Without Docker
 
 ```bash

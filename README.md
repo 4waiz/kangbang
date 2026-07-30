@@ -175,6 +175,15 @@ docker compose --profile postgres up --build   # exercise the Postgres path
 npm run docker:down                            # stop
 ```
 
+For platforms that give you a single container and one port, there is also a
+one-image build in which the server serves the client itself:
+
+```bash
+docker build -f docker/allinone.Dockerfile -t kangbang:allinone .
+docker run -p 8080:8080 -e SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))") kangbang:allinone
+```
+
+`fly.toml` is committed for Fly.io — `fly secrets set SESSION_SECRET=... && fly deploy`.
 See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---

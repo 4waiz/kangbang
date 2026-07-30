@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# KANG BANG on Fly.io
+#
+# Fly is a good fit: it runs a long-lived process (needed for the 60 Hz tick
+# loop), passes WebSockets through without configuration, and gives you a volume
+# for SQLite. Serverless platforms cannot host this - a function cannot hold a
+# persistent socket or run a continuous simulation.
+#
+# First deploy:
+#
+#   fly auth login
+#   fly launch --no-deploy --copy-config --name kang-bang
+#   fly volumes create kang_data --size 1 --region lhr
+#   fly secrets set SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+#   fly deploy
+#
+# Then:  fly open        (or https://<app>.fly.dev)
+#
+# Subsequent deploys are just `fly deploy`.
+# ---------------------------------------------------------------------------
+
+app = "kang-bang"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "docker/allinone.Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  SERVE_CLIENT = "true"
+  CLIENT_DIST = "/app/client"
+  SQLITE_PATH = "/data/kangbang.db"
+  # One origin serves both the client and the socket, so the allow-list is just
+  # this app. Add your custom domain here when you attach one.
+  CORS_ORIGIN = "https://kang-bang.fly.dev"
+  BOT_FILL = "true"
+  BOT_FILL_TARGET = "8"
+  BOT_DIFFICULTY = "normal"
+  LOG_SUSPICIOUS = "true"
+
+# SESSION_SECRET is NOT set here - it is a secret.
+#   fly secrets set SESSION_SECRET=...
+# The server refuses to start in production without it.
+
+[[mounts]]
+  source = "kang_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # A game server must not be stopped between matches, and a cold start mid-session
+  # would drop everyone in the room.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    # One machine hosts many rooms. Raise alongside `MAX_ROOMS` and watch
+    # `avgTickMs` from /api/health rather than guessing.
+    soft_limit = 200
+    hard_limit = 250
+
+[[http_service.checks]]
+  interval = "20s"
+  timeout = "4s"
+  grace_period = "15s"
+  method = "GET"
+  path = "/api/health"
+
+[[vm]]
+  # The simulation is CPU-bound, not memory-bound: 60 Hz x rooms x players.
+  # shared-cpu-2x comfortably handles a few dozen concurrent rooms.
+  size = "shared-cpu-2x"
+  memory = "1gb"
+
+# Scaling note: a room lives entirely in the process that created it, so players
+# must reach the same machine. With more than one machine, either keep them in one
+# region and accept Fly's connection affinity, or run a single larger machine.
+# See docs/DEPLOYMENT.md.
