@@ -20,7 +20,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
+  MeshLambertMaterial,
   PointLight,
   Vector3,
   type Material,
@@ -167,10 +167,21 @@ function makeMaterial(key: string, def: MaterialDef, quality: TextureQuality, ne
     });
   }
 
-  const mat = new MeshStandardMaterial({
+  /**
+   * Lambert rather than Standard, deliberately.
+   *
+   * The grounded palette is non-metallic, so the metalness/roughness half of the
+   * PBR model has nothing to describe: a painted wall is diffuse. Lambert drops
+   * the whole specular and IBL path, which means no environment map is needed
+   * (12 MB), fewer shader permutations to compile (93 programs before), and a
+   * measurably cheaper fragment shader on integrated GPUs.
+   *
+   * What is lost is the specular highlight on the few semi-metallic surfaces -
+   * girders and grating. At the brightness this art direction runs at, that
+   * highlight was not carrying any readability.
+   */
+  const mat = new MeshLambertMaterial({
     color: new Color(def.color),
-    roughness: def.roughness,
-    metalness: def.metalness,
     transparent,
     opacity: def.opacity,
     side: transparent ? DoubleSide : undefined,

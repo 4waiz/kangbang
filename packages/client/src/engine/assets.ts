@@ -23,6 +23,7 @@ import {
   Group,
   LOD,
   Mesh,
+  MeshLambertMaterial,
   MeshStandardMaterial,
   Object3D,
   Vector3,
@@ -126,7 +127,7 @@ export class AssetLibrary {
   private loader = new GLTFLoader();
   private assets = new Map<string, LoadedAsset>();
   private manifest: AssetManifest | null = null;
-  private materialCache = new Map<string, MeshStandardMaterial>();
+  private materialCache = new Map<string, MeshLambertMaterial>();
   /** Names we already reported as missing, so the console stays readable. */
   private warned = new Set<string>();
 
@@ -225,15 +226,15 @@ export class AssetLibrary {
         const geo = mesh.geometry;
         if (geo.index) triangles += geo.index.count / 3;
         else if (geo.attributes.position) triangles += geo.attributes.position.count / 3;
-        // Emissive materials from Blender come through with a strength we want
-        // to keep, but they must not be tone-mapped or they read as grey.
+        // Blender's glTF exporter always writes metallic/roughness PBR, so every
+        // model arrives as MeshStandardMaterial. The scene has no environment
+        // map any more, and a metallic Standard material with nothing to reflect
+        // renders black - so these are converted to Lambert rather than left as
+        // they are. Conversion also collapses the shader permutations the level
+        // and the models would otherwise compile separately.
         const mat = mesh.material as MeshStandardMaterial | MeshStandardMaterial[];
-        const fix = (m: MeshStandardMaterial) => {
-          if (m.emissiveIntensity > 1.5) m.toneMapped = false;
-          if (m.transparent) m.depthWrite = false;
-        };
-        if (Array.isArray(mat)) mat.forEach(fix);
-        else if (mat) fix(mat);
+        if (Array.isArray(mat)) mesh.material = mat.map((m) => this.toLambert(m));
+        else if (mat) mesh.material = this.toLambert(mat);
       });
       for (const d of doomed) d.parent?.remove(d);
       const lodLevels = attachLods(scene, lodMeshes);
@@ -304,17 +305,52 @@ export class AssetLibrary {
   // Procedural fallbacks
   // ---------------------------------------------------------------------
 
-  private material(key: string, color: number, emissive = 0, metalness = 0.6, roughness = 0.4): MeshStandardMaterial {
+  /**
+   * Convert a PBR material from a GLB into the flat lit equivalent.
+   *
+   * Cached by the source material's uuid, because a joined mesh reuses one
+   * material across many objects and converting per-object would multiply draw
+   * calls. Colour, emissive and any map carry over; metalness and roughness are
+   * dropped, which is the point.
+   */
+  private toLambert(src: MeshStandardMaterial): MeshLambertMaterial {
+    const cacheKey = `lambert:${src.uuid}`;
+    const hit = this.materialCache.get(cacheKey);
+    if (hit) return hit;
+
+    const mat = new MeshLambertMaterial({
+      color: src.color?.clone() ?? new Color(0xffffff),
+      map: src.map ?? null,
+      transparent: src.transparent,
+      opacity: src.opacity,
+      side: src.side,
+      // A transparent surface writing depth occludes what is behind it.
+      depthWrite: src.transparent ? false : src.depthWrite,
+      vertexColors: src.vertexColors,
+    });
+    if (src.emissive && (src.emissive.r || src.emissive.g || src.emissive.b)) {
+      mat.emissive = src.emissive.clone();
+      mat.emissiveMap = src.emissiveMap ?? null;
+      // Blender exports a strength we want to keep, but a strongly emissive
+      // surface must not be tone-mapped or it reads as flat grey.
+      mat.emissiveIntensity = src.emissiveIntensity;
+      if (src.emissiveIntensity > 1.5) mat.toneMapped = false;
+    }
+    mat.name = src.name;
+    this.materialCache.set(cacheKey, mat);
+    // The Standard material and its PBR-only maps are now unreferenced; the maps
+    // themselves may be shared, so only the material is disposed here.
+    src.dispose();
+    return mat;
+  }
+
+  private material(key: string, color: number, emissive = 0): MeshLambertMaterial {
     const hit = this.materialCache.get(key);
     if (hit) return hit;
-    const mat = new MeshStandardMaterial({
-      color: new Color(color),
-      metalness,
-      roughness,
-    });
+    const mat = new MeshLambertMaterial({ color: new Color(color) });
     if (emissive) {
       mat.emissive = new Color(emissive);
-      mat.emissiveIntensity = 2;
+      mat.emissiveIntensity = 1.4;
       mat.toneMapped = false;
     }
     this.materialCache.set(key, mat);

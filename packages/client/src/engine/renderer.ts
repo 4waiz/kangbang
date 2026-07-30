@@ -12,16 +12,14 @@
  */
 
 import {
-  ACESFilmicToneMapping,
+  NoToneMapping,
   Color,
   DirectionalLight,
-  EquirectangularReflectionMapping,
   Fog,
   HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   PCFSoftShadowMap,
-  PMREMGenerator,
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
@@ -29,7 +27,6 @@ import {
   SphereGeometry,
   Vector3,
   WebGLRenderer,
-  type Texture,
 } from 'three';
 import type { MapAmbience } from '@kang/shared';
 import { store } from '../state/store.js';
@@ -86,8 +83,10 @@ export class Renderer {
       preserveDrawingBuffer: false,
     });
     this.renderer.outputColorSpace = SRGBColorSpace;
-    this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    // No tone curve: the palette is already in display range, and a filmic
+    // curve on flat lit surfaces just muddies them.
+    this.renderer.toneMapping = NoToneMapping;
+    this.renderer.toneMappingExposure = 1;
     this.renderer.autoClear = true;
     this.renderer.info.autoReset = false;
 
@@ -146,10 +145,10 @@ export class Renderer {
     this.viewCamera.updateProjectionMatrix();
 
     this.renderScale = store.num('resolutionScale');
-    // Bloom is approximated by additive emissive geometry rather than a full
-    // post chain: on integrated GPUs a real bloom pass costs more than the
-    // entire rest of the frame.
-    this.renderer.toneMappingExposure = store.bool('bloom') ? 1.12 : 1.0;
+    // `bloom` is now a small exposure lift rather than a post pass: with no
+    // tone curve and few emissive surfaces there is nothing for a real bloom
+    // to bloom, and on integrated GPUs the pass cost more than the frame.
+    this.renderer.toneMappingExposure = store.bool('bloom') ? 1.06 : 1.0;
   }
 
   resize(): void {
@@ -169,41 +168,20 @@ export class Renderer {
   }
 
   /**
-   * Build an environment map from the map's sky.
+   * There is deliberately no environment map.
    *
-   * This is not optional polish: the level's materials are metallic (hull is
-   * 0.72, trim 0.85), and a metallic PBR material with no environment to
-   * reflect renders essentially black no matter how many lights are in the
-   * scene. Convolving the skybox into a PMREM gives every metal surface
-   * something to reflect and is what makes the level readable.
+   * The previous art direction was metallic sci-fi, and a metallic PBR material
+   * with nothing to reflect renders black, so the skybox had to be convolved into
+   * a PMREM cubemap to make the level readable. That cubemap measured 1536x2048
+   * and was the single largest allocation in the process at 12 MB - more than the
+   * entire rest of the texture budget.
+   *
+   * The grounded palette is non-metallic (see MATERIALS in shared/sim/world.ts),
+   * so image-based lighting buys nothing: painted concrete and coated steel are
+   * described completely by albedo plus a hemisphere and a sun. Removing it costs
+   * one specular highlight nobody was looking at and returns 12 MB.
    */
-  private buildEnvironment(skyKind: string): void {
-    const quality = store.str('textureQuality') as TextureQuality;
-    const source = skyTexture(skyKind, quality);
-    source.mapping = EquirectangularReflectionMapping;
-    const pmrem = new PMREMGenerator(this.renderer);
-    pmrem.compileEquirectangularShader();
-    const previous = this.environment;
-    try {
-      const target = pmrem.fromEquirectangular(source);
-      this.environment = target.texture;
-      this.scene.environment = this.environment;
-      // Keep the reflection contribution restrained: at 1.0 the metal reads as
-      // chrome and the level loses its matte industrial character.
-      this.scene.environmentIntensity = 0.55;
-      this.viewScene.environment = this.environment;
-      this.viewScene.environmentIntensity = 0.7;
-    } catch {
-      // If PMREM fails (very old GL), fall back to lights only and raise the
-      // hemisphere so the scene is still legible.
-      this.hemi.intensity = Math.max(this.hemi.intensity, 1.6);
-    } finally {
-      pmrem.dispose();
-      previous?.dispose();
-    }
-  }
 
-  private environment: Texture | null = null;
 
   /** Apply a map's lighting + fog + skybox. */
   applyAmbience(a: MapAmbience): void {
@@ -251,7 +229,6 @@ export class Renderer {
     this.scene.add(mesh);
     this.sky = mesh;
 
-    this.buildEnvironment(a.skybox);
   }
 
   // -- frame --------------------------------------------------------------

@@ -210,8 +210,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   pulse_ar: {
     id: 'pulse_ar',
-    name: 'Pulse Assault Rifle',
-    short: 'PULSE-AR',
+    name: 'MR-4 Rifle',
+    short: 'MR-4',
     category: 'ar',
     slot: 'primary',
     fireMode: 'auto',
@@ -286,8 +286,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   plasma_smg: {
     id: 'plasma_smg',
-    name: 'Plasma SMG',
-    short: 'PLASMA-SMG',
+    name: 'SC-9 SMG',
+    short: 'SC-9',
     category: 'smg',
     slot: 'primary',
     fireMode: 'auto',
@@ -368,13 +368,13 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   rail_sniper: {
     id: 'rail_sniper',
-    name: 'Rail Sniper',
-    short: 'RAIL',
+    name: 'LR-12 Sniper',
+    short: 'LR-12',
     category: 'sniper',
     slot: 'primary',
     fireMode: 'bolt',
     projectile: 'hitscan',
-    description: 'Magnetically accelerated slug. One shot to the upper chest or head, punishing bolt cycle.',
+    description: 'Heavy bolt-action. One shot to the upper chest or head, punishing cycle time.',
     unlockLevel: 4,
     damage: 96,
     damageMin: 88,
@@ -453,13 +453,13 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   ion_shotgun: {
     id: 'ion_shotgun',
-    name: 'Ion Shotgun',
-    short: 'ION-SG',
+    name: 'Breacher 12',
+    short: 'BR-12',
     category: 'shotgun',
     slot: 'primary',
     fireMode: 'pump',
     projectile: 'hitscan',
-    description: 'Eight ionised pellets. Deletes anything inside eight metres and nothing outside twenty.',
+    description: 'Eight pellets of buckshot. Deletes anything inside eight metres and nothing outside twenty.',
     unlockLevel: 2,
     damage: 15,
     damageMin: 3,
@@ -536,13 +536,13 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   particle_lmg: {
     id: 'particle_lmg',
-    name: 'Heavy Particle LMG',
-    short: 'PARTICLE-LMG',
+    name: 'SAW-60',
+    short: 'SAW-60',
     category: 'lmg',
     slot: 'primary',
     fireMode: 'auto',
     projectile: 'hitscan',
-    description: 'Hundred-round belt with brutal sustained output. Spins up before reaching full rate.',
+    description: 'Hundred-round belt with brutal sustained output. Takes a moment to reach full rate.',
     unlockLevel: 8,
     damage: 24,
     damageMin: 16,
@@ -619,8 +619,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   burst_carbine: {
     id: 'burst_carbine',
-    name: 'Burst Carbine',
-    short: 'CARBINE',
+    name: 'TB-3 Carbine',
+    short: 'TB-3',
     category: 'carbine',
     slot: 'primary',
     fireMode: 'burst',
@@ -702,8 +702,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   energy_pistol: {
     id: 'energy_pistol',
-    name: 'Energy Pistol',
-    short: 'E-PISTOL',
+    name: 'SD-9 Pistol',
+    short: 'SD-9',
     category: 'pistol',
     slot: 'secondary',
     fireMode: 'single',
@@ -785,8 +785,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   tactical_revolver: {
     id: 'tactical_revolver',
-    name: 'Tactical Revolver',
-    short: 'REVOLVER',
+    name: 'RV-44 Revolver',
+    short: 'RV-44',
     category: 'revolver',
     slot: 'secondary',
     fireMode: 'single',
@@ -869,13 +869,13 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   plasma_blade: {
     id: 'plasma_blade',
-    name: 'Plasma Blade',
-    short: 'BLADE',
+    name: 'Combat Knife',
+    short: 'KNIFE',
     category: 'melee',
     slot: 'melee',
     fireMode: 'swing',
     projectile: 'none',
-    description: 'Contained plasma edge. Lethal from behind, two hits from the front, silent either way.',
+    description: 'Lethal from behind, two hits from the front, silent either way.',
     unlockLevel: 0,
     damage: 62,
     damageMin: 62,
@@ -947,8 +947,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
   // -------------------------------------------------------------------------
   arc_launcher: {
     id: 'arc_launcher',
-    name: 'Arc Launcher',
-    short: 'ARC',
+    name: 'GL-40 Launcher',
+    short: 'GL-40',
     category: 'launcher',
     slot: 'primary',
     fireMode: 'single',

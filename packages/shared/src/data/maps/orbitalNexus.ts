@@ -31,8 +31,8 @@ const ROOM_OFFSET = 34;
 export function buildOrbitalNexus(): MapDef {
   const b = new MapBuilder(
     'orbital_nexus',
-    'Orbital Nexus',
-    'Deep-orbit transfer station. Mind the gaps.',
+    'Terminal',
+    'Freight transfer terminal. Mind the gaps.',
     ['tdm', 'domination', 'hardpoint', 'core', 'ffa', 'elimination', 'progression'],
   );
 
@@ -305,10 +305,11 @@ export function buildOrbitalNexus(): MapDef {
     -8,
     {
       skybox: 'orbital',
-      fogColor: 0x0a1020,
+      // Clear high-altitude daylight.
+      fogColor: 0xbdd0e2,
       fogDensity: 0.006,
-      hemiSky: 0x6f8fc4,
-      hemiGround: 0x171d2c,
+      hemiSky: 0xd8e6f4,
+      hemiGround: 0x8f979e,
       hemiIntensity: 1.05,
       sunColor: 0xffffff,
       sunIntensity: 1.5,

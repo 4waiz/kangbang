@@ -110,15 +110,15 @@ export const CLASSES: Record<string, ClassDef> = {
     move: move(),
     passive: {
       id: 'combat_momentum',
-      name: 'Combat Momentum',
+      name: 'Second Wind',
       description: 'Eliminations refund 35% of your ability charge and instantly restart shield regeneration.',
       icon: 'momentum',
     },
     ability: {
       id: 'thruster_dash',
-      name: 'Thruster Dash',
+      name: 'Tactical Sprint',
       kind: 'dash',
-      description: 'Burst dash in your movement direction. Retains momentum on landing.',
+      description: 'Explosive burst of speed in your movement direction. Keeps momentum on landing.',
       cooldown: 8,
       duration: 0,
       charges: 2,
@@ -129,7 +129,7 @@ export const CLASSES: Record<string, ClassDef> = {
     },
     ultimate: {
       id: 'overdrive',
-      name: 'Overdrive',
+      name: 'Adrenaline',
       kind: 'overshield',
       description: '8 seconds of +75 overshield, 20% faster reloads and no movement penalty while aiming.',
       cooldown: 90,
@@ -160,7 +160,7 @@ export const CLASSES: Record<string, ClassDef> = {
     move: move({ speedScale: 1.14, accelScale: 1.12, jumpScale: 1.06, airControlScale: 1.25, slideScale: 1.35, doubleJump: true }),
     passive: {
       id: 'silent_step',
-      name: 'Silent Step',
+      name: 'Light Footed',
       description: 'Footsteps are inaudible to enemies and you take no fall damage.',
       icon: 'silent',
     },
@@ -210,13 +210,13 @@ export const CLASSES: Record<string, ClassDef> = {
     move: move({ speedScale: 0.86, accelScale: 0.9, jumpScale: 0.94, airControlScale: 0.75, slideScale: 0.7, gravityScale: 1.12, adsSpeedScale: 0.62 }),
     passive: {
       id: 'braced',
-      name: 'Braced Frame',
+      name: 'Heavy Plate',
       description: 'Takes 15% less explosive damage and cannot be staggered. LMG reloads 25% faster.',
       icon: 'braced',
     },
     ability: {
       id: 'bulwark',
-      name: 'Bulwark',
+      name: 'Ballistic Shield',
       kind: 'barrier',
       description: 'Deploys a 3m energy barrier that blocks enemy fire and can be shot down.',
       cooldown: 18,
@@ -231,7 +231,7 @@ export const CLASSES: Record<string, ClassDef> = {
     },
     ultimate: {
       id: 'siege_mode',
-      name: 'Siege Mode',
+      name: 'Dig In',
       kind: 'overshield',
       description: '10s of +150 overshield and zero recoil, at the cost of 40% movement speed.',
       cooldown: 100,
@@ -262,13 +262,13 @@ export const CLASSES: Record<string, ClassDef> = {
     move: move({ speedScale: 0.96, accelScale: 1, slideScale: 0.95 }),
     passive: {
       id: 'field_medic',
-      name: 'Field Medic',
+      name: 'Combat Medic',
       description: 'Nearby allies within 8m regenerate shields 60% faster. You score for every ally healed.',
       icon: 'medic',
     },
     ability: {
       id: 'aegis_field',
-      name: 'Aegis Field',
+      name: 'Deployable Cover',
       kind: 'heal_field',
       description: 'Drops a 5m field that restores 22 health per second to allies inside it.',
       cooldown: 16,
@@ -283,7 +283,7 @@ export const CLASSES: Record<string, ClassDef> = {
     },
     ultimate: {
       id: 'guardian_lattice',
-      name: 'Guardian Lattice',
+      name: 'Squad Armour',
       kind: 'barrier',
       description: 'Raises a 7m dome for 9s. Blocks all incoming fire, allies can shoot out.',
       cooldown: 95,
@@ -316,13 +316,13 @@ export const CLASSES: Record<string, ClassDef> = {
     move: move({ speedScale: 1.02, airControlScale: 1.1, adsSpeedScale: 0.44 }),
     passive: {
       id: 'steady_optic',
-      name: 'Steady Optic',
+      name: 'Steady Hands',
       description: 'Scoped sway is halved and scoped movement penalty reduced by 30%. Headshots refund 20% ability charge.',
       icon: 'optic',
     },
     ability: {
       id: 'pulse_scan',
-      name: 'Pulse Scan',
+      name: 'Motion Sensor',
       kind: 'scan',
       description: 'Emits a 26m pulse that outlines enemies through walls for 4 seconds.',
       cooldown: 15,
@@ -335,7 +335,7 @@ export const CLASSES: Record<string, ClassDef> = {
     },
     ultimate: {
       id: 'lattice_lock',
-      name: 'Lattice Lock',
+      name: 'Recon Sweep',
       kind: 'scan',
       description: '10s global enemy outline for your whole team, plus instant rail charge for you.',
       cooldown: 105,
@@ -387,7 +387,7 @@ export const CLASSES: Record<string, ClassDef> = {
     },
     ultimate: {
       id: 'system_purge',
-      name: 'System Purge',
+      name: 'EMP Burst',
       kind: 'emp',
       description: '18m EMP: destroys enemy deployables, drains enemy ability charge and disables HUD for 5s.',
       cooldown: 90,

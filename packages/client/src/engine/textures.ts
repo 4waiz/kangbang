@@ -21,7 +21,15 @@ import { MATERIALS, type MaterialDef } from '@kang/shared';
 
 export type TextureQuality = 'low' | 'medium' | 'high';
 
-const SIZES: Record<TextureQuality, number> = { low: 128, medium: 256, high: 512 };
+/**
+ * Surface detail resolution.
+ *
+ * These are tiling patterns - panel seams, noise, grating - stretched over
+ * walls metres across and usually seen at an angle. At 512 each one cost
+ * 1.3 MB with its mip chain and a dozen were resident, which was a third of
+ * the whole texture budget for detail nobody can resolve at 1080p.
+ */
+const SIZES: Record<TextureQuality, number> = { low: 64, medium: 128, high: 192 };
 
 const cache = new Map<string, Texture>();
 
@@ -219,7 +227,7 @@ function paintHazard(ctx: CanvasRenderingContext2D, size: number, def: MaterialD
   ctx.fillStyle = hex(def.color);
   ctx.fillRect(0, 0, size, size);
   ctx.save();
-  ctx.fillStyle = '#161616';
+  ctx.fillStyle = '#3a3a3a';
   const stripe = size / 6;
   ctx.translate(-size, 0);
   ctx.rotate(-Math.PI / 4);
@@ -330,15 +338,40 @@ function paintNoise(ctx: CanvasRenderingContext2D, size: number, def: MaterialDe
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * Detail maps are colour-neutral modulation maps, not albedo.
+ *
+ * This matters and was previously wrong. The painters fill with `def.color`, and
+ * the result was assigned to `material.map` - which Three.js multiplies by
+ * `material.color`. The albedo was therefore applied twice, squared: `grate` at
+ * 0x6e7378 (0.44 luminance) rendered at 0.19, and `trim` at 0x3a3f45 rendered at
+ * 0.05, which is black. The old environment map and heavy emissive masked it;
+ * on a flat lit palette it showed up immediately as near-black walls.
+ *
+ * Painting on white instead makes the map a pure light/dark modulation, so
+ * `map x color` reproduces the material colour with detail on top - the correct
+ * result, and it means the hue lives in exactly one place.
+ *
+ * It also means the texture no longer depends on the material at all, only on
+ * the pattern, so every material sharing a pattern shares one texture. That took
+ * the unique-texture count down from twelve to seven.
+ */
+const NEUTRAL_BASE = 0xffffff;
+
 export function materialTexture(key: string, quality: TextureQuality): Texture {
-  const cacheKey = `${key}:${quality}`;
+  const source = MATERIALS[key] ?? MATERIALS.concrete;
+  // Keyed by pattern, not by material: the output is colour-independent now.
+  const cacheKey = `pattern:${source.pattern}:${quality}`;
   const hit = cache.get(cacheKey);
   if (hit) return hit;
 
-  const def = MATERIALS[key] ?? MATERIALS.concrete;
+  // Neutral stand-in so the painters shade relative to white. `emissive` is
+  // neutral too, because the same texture is used as an emissiveMap.
+  const def: MaterialDef = { ...source, color: NEUTRAL_BASE, emissive: NEUTRAL_BASE };
   const size = SIZES[quality];
   const { canvas, ctx } = makeCanvas(size);
-  const seed = hashKey(key);
+  // Seeded by pattern so the noise is stable but not identical between patterns.
+  const seed = hashKey(def.pattern);
 
   switch (def.pattern) {
     case 'panel':
@@ -453,92 +486,60 @@ export function decalTexture(): Texture {
  * glow tuned per map. Cheap, and it sells the setting far better than a flat
  * clear colour.
  */
+/**
+ * Daylight sky gradient.
+ *
+ * Only 16 pixels wide: the gradient varies vertically and the GPU stretches it
+ * horizontally for nothing. The previous sky was a 2048x1024 starfield nebula
+ * needing real width for per-pixel stars, and it cost 8 MB - the second largest
+ * allocation in the process after the environment map. This one is about 20 KB
+ * and suits the setting better, since these are daytime industrial and urban
+ * locations rather than deep orbit.
+ */
 export function skyTexture(kind: string, quality: TextureQuality): Texture {
-  const cacheKey = `sky:${kind}:${quality}`;
+  const cacheKey = `sky:${kind}`;
   const hit = cache.get(cacheKey);
   if (hit) return hit;
+  void quality; // Resolution is fixed: a gradient gains nothing from more pixels.
 
-  const h = quality === 'low' ? 256 : quality === 'medium' ? 512 : 1024;
-  const w = h * 2;
+  const w = 16;
+  const h = 256;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('2D canvas unavailable');
 
-  const palettes: Record<string, { top: string; mid: string; bottom: string; accent: string; stars: number }> = {
-    foundry: { top: '#0a1220', mid: '#182a3c', bottom: '#2a1c14', accent: '#ff8a3c', stars: 260 },
-    orbital: { top: '#02040c', mid: '#080f22', bottom: '#0d1830', accent: '#4fd8ff', stars: 1400 },
-    mirage: { top: '#120a20', mid: '#2a1240', bottom: '#4a1a3a', accent: '#ff3ec8', stars: 520 },
+  // Named for the three maps, but read as time of day and weather rather than
+  // as a planet.
+  const palettes: Record<string, { zenith: string; horizon: string; haze: string }> = {
+    // Overcast industrial daylight: flat white sky over a warehouse district.
+    foundry: { zenith: '#8fa6bd', horizon: '#d6dee6', haze: '#e8edf1' },
+    // Clear high-altitude afternoon.
+    orbital: { zenith: '#5b8ec4', horizon: '#c3d8ea', haze: '#dfeaf4' },
+    // Late-afternoon warm haze over a city.
+    mirage: { zenith: '#7d94b8', horizon: '#e5d3bd', haze: '#f0e3d2' },
   };
   const p = palettes[kind] ?? palettes.orbital;
 
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, p.top);
-  grad.addColorStop(0.55, p.mid);
-  grad.addColorStop(1, p.bottom);
+  grad.addColorStop(0, p.zenith);
+  grad.addColorStop(0.52, p.horizon);
+  grad.addColorStop(0.62, p.haze);
+  // Below the horizon the dome is behind the level, so it only needs to not draw
+  // attention to itself.
+  grad.addColorStop(1, p.haze);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // Nebula bands.
-  for (let band = 0; band < 4; band++) {
-    const y = h * (0.25 + band * 0.16);
-    const g2 = ctx.createLinearGradient(0, y - h * 0.1, 0, y + h * 0.1);
-    g2.addColorStop(0, 'rgba(0,0,0,0)');
-    g2.addColorStop(0.5, `${p.accent}22`);
-    g2.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, y - h * 0.1, w, h * 0.2);
-  }
-
-  // Cloud/dust using fbm, sparse so it reads as depth not fog.
-  const img = ctx.getImageData(0, 0, w, h);
-  const data = img.data;
-  for (let y = 0; y < h; y += 2) {
-    for (let x = 0; x < w; x += 2) {
-      const n = fbm((x / w) * 8, (y / h) * 4, 31, 4);
-      if (n < 0.56) continue;
-      const a = (n - 0.56) * 0.9;
-      const i = (y * w + x) * 4;
-      data[i] = Math.min(255, data[i] + 90 * a);
-      data[i + 1] = Math.min(255, data[i + 1] + 100 * a);
-      data[i + 2] = Math.min(255, data[i + 2] + 130 * a);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-
-  // Stars, denser near the zenith.
-  for (let i = 0; i < p.stars; i++) {
-    const x = noise2(i, 101, 5) * w;
-    const yn = noise2(i, 202, 5);
-    const y = yn * yn * h * 0.85;
-    const r = 0.4 + noise2(i, 303, 5) * 1.4;
-    const a = 0.25 + noise2(i, 404, 5) * 0.75;
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // A couple of distant structures on the horizon for scale.
-  ctx.globalAlpha = 0.5;
-  ctx.fillStyle = p.accent;
-  for (let i = 0; i < 3; i++) {
-    const x = (0.2 + i * 0.3) * w;
-    const r = h * (0.02 + noise2(i, 9, 3) * 0.03);
-    ctx.beginPath();
-    ctx.arc(x, h * 0.78, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
   const tex = new CanvasTexture(canvas);
-  tex.colorSpace = SRGBColorSpace;
-  tex.wrapS = RepeatWrapping;
+  tex.wrapS = ClampToEdgeWrapping;
   tex.wrapT = ClampToEdgeWrapping;
   tex.magFilter = LinearFilter;
   tex.minFilter = LinearFilter;
+  // No mips: it is 16px wide and never minified.
   tex.generateMipmaps = false;
+  tex.colorSpace = SRGBColorSpace;
   cache.set(cacheKey, tex);
   return tex;
 }

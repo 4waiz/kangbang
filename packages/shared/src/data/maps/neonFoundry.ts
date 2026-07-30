@@ -28,8 +28,8 @@ const CRANE = GANTRY + 2.6;
 export function buildNeonFoundry(): MapDef {
   const b = new MapBuilder(
     'neon_foundry',
-    'Neon Foundry',
-    'Reactor-lit ore works. Three levels, no long walks.',
+    'Foundry',
+    'Working steel mill. Three levels, no long walks.',
     ['ffa', 'tdm', 'domination', 'hardpoint', 'progression', 'elimination', 'core'],
   );
 
@@ -310,18 +310,23 @@ export function buildNeonFoundry(): MapDef {
     -24,
     {
       skybox: 'foundry',
-      fogColor: 0x1a2230,
-      fogDensity: 0.012,
-      hemiSky: 0x7d9ab8,
-      hemiGround: 0x2a2f3a,
-      // Enclosed interior: the hemisphere is doing the work a sky would do
-      // outdoors, so it has to be strong or the floor reads as black.
-      hemiIntensity: 1.75,
-      sunColor: 0xfff2e0,
-      sunIntensity: 1.15,
+      // Overcast daylight through roof glazing. Pale fog rather than dark: haze
+      // that lightens with distance reads as air, haze that darkens reads as a
+      // wall, and a shooter needs to see down its own sightlines.
+      fogColor: 0xc8d2dc,
+      fogDensity: 0.006,
+      hemiSky: 0xdfe8f0,
+      hemiGround: 0x9aa0a6,
+      // Enclosed interior: the hemisphere does the work a sky would do outdoors,
+      // so it stays strong or the floor goes flat.
+      hemiIntensity: 1.85,
+      sunColor: 0xfff8ec,
+      sunIntensity: 1.25,
       sunDir: [-0.4, -1, -0.35],
       ambientLoop: 'amb_foundry',
-      neonBoost: 1.1,
+      // Accent materials are painted signage now, not neon, so there is nothing
+      // to boost.
+      neonBoost: 1,
     },
   );
 }

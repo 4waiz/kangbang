@@ -42,8 +42,8 @@ const HUB_HALF = 4.5;
 export function buildMirageDistrict(): MapDef {
   const b = new MapBuilder(
     'mirage_district',
-    'Mirage District',
-    'Rain-slick neon streets. Take the rooftops.',
+    'Backstreets',
+    'Rain-slick side streets. Take the rooftops.',
     ['ffa', 'tdm', 'domination', 'hardpoint', 'progression', 'elimination', 'core'],
   );
 
@@ -294,12 +294,13 @@ export function buildMirageDistrict(): MapDef {
     -20,
     {
       skybox: 'mirage',
-      fogColor: 0x160f24,
+      // Late-afternoon warm urban haze.
+      fogColor: 0xdcd0be,
       fogDensity: 0.014,
-      hemiSky: 0x5f6ec4,
-      hemiGround: 0x241a2e,
+      hemiSky: 0xe8ddc8,
+      hemiGround: 0x9a9086,
       hemiIntensity: 1.25,
-      sunColor: 0xffd0e8,
+      sunColor: 0xfff0d8,
       sunIntensity: 0.75,
       sunDir: [0.35, -0.85, 0.4],
       ambientLoop: 'amb_mirage',

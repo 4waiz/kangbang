@@ -59,6 +59,17 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Handle for tooling only: `tools/memory-probe.mjs` walks these to total up
+  // what the GPU is actually holding. Read-only, and nothing in the game reads
+  // it back, so it is safe to leave in the production bundle - "it uses too much
+  // memory" is not actionable without a way to measure from outside.
+  (window as unknown as { __kangDebug?: unknown }).__kangDebug = {
+    renderer: renderer.renderer,
+    scene: renderer.scene,
+    viewScene: renderer.viewScene,
+    rig: renderer,
+  };
+
   const input = new InputManager(canvas);
   const app = new App(renderer, input, hudRoot, overlay, uiRoot);
   app.installKeyUp();
