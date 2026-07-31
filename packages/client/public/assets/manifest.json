@@ -3,243 +3,243 @@
   "generator": "assets/scripts/gen_*.py",
   "note": "Every model here is generated from source by the Blender scripts in assets/scripts. Regenerate with: npm run assets",
   "count": 59,
-  "totalBytes": 607348,
+  "totalBytes": 1481708,
   "models": {
     "char_arms_fp": {
       "file": "models/char_arms_fp.glb",
-      "bytes": 12356
+      "bytes": 16436
     },
     "char_engineer": {
       "file": "models/char_engineer.glb",
-      "bytes": 30120
+      "bytes": 64300
     },
     "char_phantom": {
       "file": "models/char_phantom.glb",
-      "bytes": 28868
+      "bytes": 51504
     },
     "char_spectre": {
       "file": "models/char_spectre.glb",
-      "bytes": 30672
+      "bytes": 54076
     },
     "char_titan": {
       "file": "models/char_titan.glb",
-      "bytes": 32240
+      "bytes": 65124
     },
     "char_vanguard": {
       "file": "models/char_vanguard.glb",
-      "bytes": 28320
+      "bytes": 68104
     },
     "char_warden": {
       "file": "models/char_warden.glb",
-      "bytes": 30468
+      "bytes": 67544
     },
     "dep_barrier": {
       "file": "models/dep_barrier.glb",
-      "bytes": 4608
+      "bytes": 6752
     },
     "dep_dome": {
       "file": "models/dep_dome.glb",
-      "bytes": 5316
+      "bytes": 21664
     },
     "dep_field": {
       "file": "models/dep_field.glb",
-      "bytes": 5944
+      "bytes": 11356
     },
     "dep_grenade": {
       "file": "models/dep_grenade.glb",
-      "bytes": 4936
+      "bytes": 6592
     },
     "dep_turret": {
       "file": "models/dep_turret.glb",
-      "bytes": 6440
+      "bytes": 11160
     },
     "obj_core": {
       "file": "models/obj_core.glb",
-      "bytes": 8196
+      "bytes": 10108
     },
     "obj_zone_marker": {
       "file": "models/obj_zone_marker.glb",
-      "bytes": 5612
+      "bytes": 7832
     },
     "pickup_ammo": {
       "file": "models/pickup_ammo.glb",
-      "bytes": 4312
+      "bytes": 6944
     },
     "pickup_health": {
       "file": "models/pickup_health.glb",
-      "bytes": 3812
+      "bytes": 7608
     },
     "pickup_pedestal": {
       "file": "models/pickup_pedestal.glb",
-      "bytes": 5144
+      "bytes": 9056
     },
     "pickup_shield": {
       "file": "models/pickup_shield.glb",
-      "bytes": 3816
+      "bytes": 5908
     },
     "prop_ac_unit": {
       "file": "models/prop_ac_unit.glb",
-      "bytes": 5280
+      "bytes": 12264
     },
     "prop_antenna": {
       "file": "models/prop_antenna.glb",
-      "bytes": 5296
+      "bytes": 24468
     },
     "prop_barrel": {
       "file": "models/prop_barrel.glb",
-      "bytes": 5356
+      "bytes": 8772
     },
     "prop_conveyor_arm": {
       "file": "models/prop_conveyor_arm.glb",
-      "bytes": 5632
+      "bytes": 10668
     },
     "prop_coolant_tank": {
       "file": "models/prop_coolant_tank.glb",
-      "bytes": 7620
+      "bytes": 19448
     },
     "prop_crane": {
       "file": "models/prop_crane.glb",
-      "bytes": 7592
+      "bytes": 22312
     },
     "prop_crate_stack": {
       "file": "models/prop_crate_stack.glb",
-      "bytes": 5900
+      "bytes": 9416
     },
     "prop_holo_billboard": {
       "file": "models/prop_holo_billboard.glb",
-      "bytes": 4520
+      "bytes": 11504
     },
     "prop_holo_globe": {
       "file": "models/prop_holo_globe.glb",
-      "bytes": 6808
+      "bytes": 11580
     },
     "prop_holo_sign": {
       "file": "models/prop_holo_sign.glb",
-      "bytes": 4304
+      "bytes": 7784
     },
     "prop_hovercar": {
       "file": "models/prop_hovercar.glb",
-      "bytes": 10172
+      "bytes": 27140
     },
     "prop_pipe_run": {
       "file": "models/prop_pipe_run.glb",
-      "bytes": 13500
+      "bytes": 22944
     },
     "prop_reactor_ring": {
       "file": "models/prop_reactor_ring.glb",
-      "bytes": 6240
+      "bytes": 15928
     },
     "prop_satellite": {
       "file": "models/prop_satellite.glb",
-      "bytes": 8460
+      "bytes": 18908
     },
     "prop_spawn_arch": {
       "file": "models/prop_spawn_arch.glb",
-      "bytes": 4732
+      "bytes": 9020
     },
     "prop_spire_collar": {
       "file": "models/prop_spire_collar.glb",
-      "bytes": 6084
+      "bytes": 21292
     },
     "prop_streetlight": {
       "file": "models/prop_streetlight.glb",
-      "bytes": 5656
+      "bytes": 9216
     },
     "prop_strut": {
       "file": "models/prop_strut.glb",
-      "bytes": 3468
+      "bytes": 8628
     },
     "prop_terminal": {
       "file": "models/prop_terminal.glb",
-      "bytes": 5660
+      "bytes": 9244
     },
     "prop_vent": {
       "file": "models/prop_vent.glb",
-      "bytes": 4928
+      "bytes": 8116
     },
     "team_marker": {
       "file": "models/team_marker.glb",
-      "bytes": 2764
+      "bytes": 3128
     },
     "wpn_arc_launcher": {
       "file": "models/wpn_arc_launcher.glb",
-      "bytes": 13948
+      "bytes": 29676
     },
     "wpn_arc_launcher_world": {
       "file": "models/wpn_arc_launcher_world.glb",
-      "bytes": 13760
+      "bytes": 46716
     },
     "wpn_burst_carbine": {
       "file": "models/wpn_burst_carbine.glb",
-      "bytes": 10932
+      "bytes": 28280
     },
     "wpn_burst_carbine_world": {
       "file": "models/wpn_burst_carbine_world.glb",
-      "bytes": 10660
+      "bytes": 45588
     },
     "wpn_energy_pistol": {
       "file": "models/wpn_energy_pistol.glb",
-      "bytes": 9148
+      "bytes": 16124
     },
     "wpn_energy_pistol_world": {
       "file": "models/wpn_energy_pistol_world.glb",
-      "bytes": 8876
+      "bytes": 15860
     },
     "wpn_ion_shotgun": {
       "file": "models/wpn_ion_shotgun.glb",
-      "bytes": 12628
+      "bytes": 21656
     },
     "wpn_ion_shotgun_world": {
       "file": "models/wpn_ion_shotgun_world.glb",
-      "bytes": 12384
+      "bytes": 21392
     },
     "wpn_particle_lmg": {
       "file": "models/wpn_particle_lmg.glb",
-      "bytes": 13548
+      "bytes": 43244
     },
     "wpn_particle_lmg_world": {
       "file": "models/wpn_particle_lmg_world.glb",
-      "bytes": 13288
+      "bytes": 68224
     },
     "wpn_plasma_blade": {
       "file": "models/wpn_plasma_blade.glb",
-      "bytes": 8296
+      "bytes": 11780
     },
     "wpn_plasma_blade_world": {
       "file": "models/wpn_plasma_blade_world.glb",
-      "bytes": 8128
+      "bytes": 11608
     },
     "wpn_plasma_smg": {
       "file": "models/wpn_plasma_smg.glb",
-      "bytes": 10216
+      "bytes": 27380
     },
     "wpn_plasma_smg_world": {
       "file": "models/wpn_plasma_smg_world.glb",
-      "bytes": 9940
+      "bytes": 44092
     },
     "wpn_pulse_ar": {
       "file": "models/wpn_pulse_ar.glb",
-      "bytes": 10928
+      "bytes": 40332
     },
     "wpn_pulse_ar_world": {
       "file": "models/wpn_pulse_ar_world.glb",
-      "bytes": 10660
+      "bytes": 63376
     },
     "wpn_rail_sniper": {
       "file": "models/wpn_rail_sniper.glb",
-      "bytes": 14316
+      "bytes": 46948
     },
     "wpn_rail_sniper_world": {
       "file": "models/wpn_rail_sniper_world.glb",
-      "bytes": 14040
+      "bytes": 73904
     },
     "wpn_tactical_revolver": {
       "file": "models/wpn_tactical_revolver.glb",
-      "bytes": 10380
+      "bytes": 20984
     },
     "wpn_tactical_revolver_world": {
       "file": "models/wpn_tactical_revolver_world.glb",
-      "bytes": 10120
+      "bytes": 20696
     }
   }
 }

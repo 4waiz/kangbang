@@ -52,13 +52,35 @@ unless they are changing a model, and CI does not need it at all.
 - **Reviewable diffs.** A weapon change is a readable diff, not an opaque binary.
 - **Consistency for free.** Every weapon uses the same material set, the same
   grip proportions and the same socket names, because they call the same helpers.
-- **Trivially re-tunable.** Changing the sci-fi palette is one edit in
+- **Trivially re-tunable.** Changing the whole palette is one edit in
   `lib_kang.py` and one command.
-- **Tiny.** 59 models in 0.59 MB, because the geometry is deliberate rather than
-  a decimated sculpt.
+- **Small.** 59 models in about 1.3 MB and 86k triangles, because the geometry
+  is deliberate rather than a decimated sculpt, and because Draco is on.
 
-The cost is real: silhouettes are blockier than hand-modelled art would be. That
-suits the intended low-poly look, and it is the trade that buys everything above.
+The cost is real: this buys detail through construction — bevels, cut recesses,
+lofted cross-sections — rather than through sculpting or baked normal maps, so
+anything that genuinely needs a high-frequency surface (fabric weave, cast
+texture, wear) has nowhere to live. That is the trade for everything above.
+
+---
+
+## Looking at what you built
+
+`assets/scripts/preview.py` renders assets to PNG straight from the generator
+functions, so what you see is what the next `npm run assets` will produce.
+Weapons render as orthographic side elevations, which is the view that shows
+whether proportions are right; characters render three-quarter front at roughly
+another player's eye height.
+
+```bash
+blender --background --factory-startup --python assets/scripts/preview.py \
+    -- --out=screenshots/assets [--set=weapons|characters|props] [--only=<id>]
+```
+
+Use it. Most of the mistakes this pipeline makes — a part lofted along the
+wrong axis, a bipod pointing down the barrel, gear floating beside a limb
+instead of wrapping it — produce a perfectly plausible triangle count and are
+invisible until rendered.
 
 ---
 
@@ -68,46 +90,122 @@ The whole library is deliberately small.
 
 ### Materials
 
-`material(name)` returns a cached PBR material from a fixed palette — hull
-greys, weapon gunmetal, energy cyan/magenta/amber/lime emissives, glass, rubber
-grips, team-tint slots. Cached by name so a joined mesh keeps one material per
-distinct surface, which is what keeps draw calls low.
+`get_material(name)` returns a cached material from `MATERIAL_LIBRARY`, a fixed
+table of real PBR values: phosphate receivers, polymer furniture, bare steel,
+brass, skin, cloth, ballistic nylon, glass, rubber, and a team-tint slot.
+Cached by name so a joined mesh keeps one material per distinct surface, which
+is what keeps draw calls low — each material is a separate glTF primitive.
+
+Three constraints the values have to respect:
+
+- **Metalness and roughness now survive to the screen.** The client keeps
+  `MeshStandardMaterial` and lights models with a PMREM-filtered procedural
+  environment, so a barrel authored at metallic 0.9 renders as metal. Before
+  that environment existed, metallic surfaces had nothing to reflect and
+  rendered black, which is why the values used to be flat.
+- **Roughness is what separates parts.** A phosphated receiver, an anodised
+  handguard and a polymer grip are near enough the same albedo; only the
+  highlight spread tells them apart.
+- **Team-tintable parts must keep a non-zero emission.** The client only tints
+  materials whose emissive is non-zero, so on `ns_team` the emission is a hook,
+  not a glow.
 
 ### Primitives
 
-Built from explicit vertex and face lists, not from `bpy.ops` primitives:
+Built from explicit vertex and face lists, not from `bpy.ops` primitives, so
+the result does not depend on operator defaults that drift between versions:
 
 | Helper | Shape |
 | --- | --- |
-| `box(...)` | axis-aligned or yaw-rotated cuboid |
+| `box(...)` | cuboid, with optional taper on the +Z face |
+| `rounded_box(...)` | `box` plus a bevel, as one call |
 | `wedge(...)` | ramp/prism, used for angled plating |
-| `cyl(...)` | n-gon cylinder, explicit segment count |
-| `tube(...)` | hollow cylinder — barrels, vents |
-| `cone(...)` | muzzle devices, spikes |
-| `plate(...)` | thin panel with a bevelled edge |
-| `sphere(...)` | icospheres for domes and cores |
+| `cylinder(...)` | n-gon prism/cone, explicit segment count |
+| `sphere(...)` / `capsule(...)` | domes, cores, limb segments |
+| `extrude_profile(...)` | a closed 2D cross-section swept along Z |
+| `loft(...)` | a stack of cross-sections skinned into a solid |
+| `lathe(...)` | a (radius, z) profile revolved about Z |
+| `tube(...)` | hollow cylinder with a real wall |
+| `barrel(...)` | barrel with an open bore and a crowned muzzle |
+| `picatinny(...)` | MIL-STD-1913 rail with its slots booleaned out |
+| `knurl(...)` / `mlok_slots(...)` | grip banding, handguard slots |
 
-Explicit vertex data rather than operators means the result does not depend on
-Blender's operator defaults, which drift between versions.
+Two profile generators feed the sweep helpers: `superellipse(rx, ry, n)` —
+`n=2` is an ellipse, `n=4` a rounded rectangle, `n=8` nearly square — and
+`ellipse(rx, ry)`.
 
-### Assembly
+`loft` and `extrude_profile` are what make organic and machined shapes possible
+at all; a torso is six superellipses from hips to shoulders, and a receiver is
+one rounded-rectangle section extruded. Stacked boxes cannot produce either.
 
-- `join(objects, name)` — merge into a single mesh, preserving material slots.
-- `socket(name, location, rotation)` — an empty marking a mount point. Weapons
-  expose `muzzle`, `eject`, `grip`, `sight`; characters expose `hand_r`,
-  `hand_l`, `head`, `chest`, `back`. The client attaches effects and world
-  weapons to these by name, so it never hardcodes an offset.
-- `add_uvs(obj)` — box-projected UVs so procedural textures land predictably.
-- `decimate_copy(obj, ratio, suffix)` — generates the LOD chain.
-- `export_glb(path, objects)` — writes the GLB with Draco off (these meshes are
-  too small for Draco to pay for its decode cost).
+### Operations
+
+- `bevel(obj, width, segments)` — rounds every edge sharper than a threshold.
+  The highest-value detail in the library: a bevel puts a highlight along each
+  corner, and that highlight is most of what separates machined metal from
+  flat shading on a box.
+- `smooth_by_angle(obj, degrees)` — marks edges sharp past a threshold and lets
+  Blender derive split normals. Run it after joining so one threshold covers
+  the model: a lathed barrel goes smooth, a receiver corner stays crisp.
+- `boolean(obj, cutter)` / `weld(obj)` — cut real recesses, then clean the seams.
+- `join(name, objects)` — merge into a single mesh, remapping material slots.
+- `add_uvs(obj)` — box-projected UVs. Model materials carry no image textures,
+  so UVs only need to exist and be non-degenerate.
+- `finish(name, parts, ...)` — the common tail of every generator: join → weld →
+  smooth → LOD → reorient → export, in that order. The order matters and is
+  easy to get wrong, which is why it lives in one place.
+
+Everything above avoids `bpy.ops`. Operators depend on an active object, a
+selection and a screen context, all of which behave differently between
+`--background` and an interactive session, so the helpers use the data API and
+the dependency graph instead.
+
+### Sockets
+
+`socket(name, location)` writes an empty named `SOCKET_<name>`. The client
+hoists these out of the graph at load and only consumes **`muzzle`** and
+**`eject`** — `grip`, `weapon`, `nameplate`, `head` and the hand sockets are
+exported but currently unused.
 
 ### LODs
 
-Each character and each world weapon exports LOD0 (full), LOD1 (~60%) and
-LOD2 (~30%). The client picks by screen-space size — see
-[PERFORMANCE.md](PERFORMANCE.md). First-person models have no LODs; they are
-always close.
+Anything over the generator's threshold also exports a decimated `<name>_LOD1`
+in the same GLB, and the client pairs them into a `THREE.LOD` switched by
+distance. There is no LOD2. First-person weapons keep a high threshold — they
+are always close and are the most-looked-at object in the game.
+
+### Draco
+
+**Draco compression is on, and the client requires it** — every shipped GLB
+declares `KHR_draco_mesh_compression` in `extensionsRequired`, and the decoder
+is fetched from the Google CDN at runtime. It shrinks these meshes by roughly
+80%, which is what makes the current triangle budget affordable over the wire.
+`export_glb` falls back silently if the encoder is unavailable in a given
+Blender build, so check the log line rather than assuming.
+
+### Face winding
+
+Every primitive produces a closed solid wound so its normals point **out**.
+This is load-bearing now: materials export with backface culling on, so an
+inward-wound mesh renders as a hole rather than merely shading oddly.
+
+Two things flip winding, and they cancel when both apply — `loft` handles the
+combination, but it is worth knowing when adding a primitive:
+
+- an odd axis permutation (`loft(axis="Y")`), and
+- sections or an extrusion ordered **descending**, which callers write all the
+  time because a grip and a magazine both run downward from the receiver.
+
+`assets/scripts/test_lib_kang.py` asserts this for every primitive in both
+directions on every axis. Run it after touching the library:
+
+```bash
+blender --background --factory-startup --python assets/scripts/test_lib_kang.py
+```
+
+It exits non-zero on failure. It exists because `box`, `wedge` and `capsule`
+were wound inward for a long time without anyone noticing — while materials
+exported double-sided, an inverted mesh looked identical to a correct one.
 
 ---
 
@@ -174,19 +272,29 @@ If a new model comes out rotated, this function is the first place to look.
 
    ```python
    def build_my_weapon():
-       parts = [
-           N.box("body",   (0, 0, 0),      (0.06, 0.05, 0.34), N.material("gunmetal")),
-           N.tube("barrel",(0, 0, 0.30),   0.018, 0.012, 0.22,  N.material("gunmetal")),
-           N.box("energy", (0, 0.035, 0.02),(0.02, 0.012, 0.10), N.material("energy_cyan")),
-       ]
-       obj = N.join(parts, "wpn_my_weapon")
-       N.add_uvs(obj)
-       N.socket("muzzle", (0, 0, 0.52))
-       N.socket("grip",   (0, -0.06, -0.04))
-       return obj
+       Y = 0.026                                   # bore axis height
+       p = []
+       p += pistol_grip(z=0.070)
+       p += trigger_group(z=0.030)
+       # A receiver is a rounded rectangle in cross-section, so extrude one.
+       p.append(N.extrude_profile("upper", N.superellipse(0.019, 0.022, 5.0, 18),
+                                  -0.118, 0.052, N.MAT_BODY_LIGHT, center=(0.0, Y)))
+       p += handguard(-0.300, -0.116, Y)           # M-LOK slots cut through
+       p.append(N.barrel("barrel", -0.352, -0.120, 0.0092, 0.0039,
+                         N.MAT_TRIM, center=(0.0, Y)))
+       p += flash_hider(-0.398, Y)
+       p.append(N.picatinny("rail", -0.034, 0.160, Y + 0.0436))
+       p += stanag_magazine(z=-0.030, depth=0.148, y_top=Y - 0.060)
+       return p                                    # a part list, not a mesh
    ```
 
-2. Register it in the generator's build table (first-person and world variants).
+   Builders return a **list of parts**; `build_weapon` calls `N.finish()`,
+   which joins, shades, builds the LOD, reorients and exports. Author in
+   metres at true scale: `viewModel.scale` in the weapon data is dead and the
+   client never scales the mesh.
+
+2. Register it in `WEAPONS` with its muzzle and eject socket positions. Both
+   the first-person and world variants come from the same builder.
 3. Add the stat block to `packages/shared/src/data/weapons.ts`.
 4. Add an icon path to `packages/client/src/ui/icons.ts`.
 5. Add the model id to the required list in `tools/build-assets.mjs`.

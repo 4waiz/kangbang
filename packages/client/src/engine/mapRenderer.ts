@@ -17,6 +17,7 @@ import {
   BufferGeometry,
   Color,
   DoubleSide,
+  FrontSide,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -202,7 +203,10 @@ function makeMaterial(key: string, def: MaterialDef, quality: TextureQuality, ne
     color: new Color(def.color),
     transparent,
     opacity: def.opacity,
-    side: transparent ? DoubleSide : undefined,
+    // Explicit FrontSide rather than `undefined`: three.js reports every
+    // undefined constructor parameter as a warning, and a brush is a closed
+    // solid, so front-facing is what it would have defaulted to anyway.
+    side: transparent ? DoubleSide : FrontSide,
     depthWrite: !transparent,
     flatShading: false,
   });
