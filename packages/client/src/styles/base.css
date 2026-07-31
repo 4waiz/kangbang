@@ -1,9 +1,9 @@
 /* ==========================================================================
    KANG BANG - design system
    --------------------------------------------------------------------------
-   Identity: dark cobalt substrate, cyan primary energy, ember secondary,
-   hard-cut corners (never rounded rectangles), thin luminous rules, and
-   condensed uppercase display type. Panels are angled plates with a clipped
+   Identity: near-black violet substrate, vivid violet primary energy, ember
+   secondary, hard-cut corners (never rounded rectangles), thin luminous rules,
+   and condensed uppercase display type. Panels are angled plates with a clipped
    corner, not translucent rectangles.
 
    Everything scales from --ui-scale so the accessibility slider works without
@@ -12,29 +12,49 @@
 
 :root {
   /* -- palette ---------------------------------------------------------- */
-  --void: #05070d;
-  --substrate: #070b14;
-  --plate: #0d1420;
-  --plate-2: #121b2a;
-  --plate-3: #182437;
-  --edge: #23334c;
-  --edge-hot: #2f4a6e;
-  --ink: #e8f1ff;
-  --ink-dim: #9db0cc;
-  --ink-faint: #66768f;
+  --void: #09070e;
+  --substrate: #0c0914;
+  --plate: #161020;
+  --plate-2: #1d152b;
+  --plate-3: #261c38;
+  --edge: #36284d;
+  --edge-hot: #4b376c;
+  --ink: #f1eefb;
+  --ink-dim: #b0a3c6;
+  --ink-faint: #7d6f97;
 
-  --ion: #2ce8ff;
-  --ion-deep: #0a3d4f;
+  --ion: #a855f7;
+  --ion-lite: #d8b4fe;
+  --ion-deep: #2f0d4c;
   --ember: #ff5a3c;
   --ember-deep: #4a1d12;
   --lime: #8dff4a;
   --amber: #ffb03a;
-  --violet: #c7a2ff;
   --magenta: #ff3ec8;
 
   --good: #4be08a;
   --warn: #ffb03a;
   --bad: #ff4d5e;
+  --bad-deep: #8c0a18;
+
+  /* -- palette channels --------------------------------------------------
+     rgba() cannot take a hex, so every colour that needs a translucent form
+     is mirrored here as a bare "r, g, b" triplet. Always write
+     rgba(var(--x-rgb), a) rather than re-typing the channels: a reskin is
+     then a single edit in this block, and the colourblind presets below can
+     override the triplets alongside their hexes. */
+  --void-rgb: 9, 7, 14;
+  --substrate-rgb: 12, 9, 20;
+  --plate-rgb: 22, 16, 32;
+  --plate-3-rgb: 38, 28, 56;
+  --edge-rgb: 54, 40, 77;
+  --ion-rgb: 168, 85, 247;
+  --ion-deep-rgb: 47, 13, 76;
+  --ember-rgb: 255, 90, 60;
+  --amber-rgb: 255, 176, 58;
+  --good-rgb: 75, 224, 138;
+  --bad-rgb: 255, 77, 94;
+  --bad-deep-rgb: 140, 10, 24;
 
   /* -- type -------------------------------------------------------------
      System stacks only: no webfont request, so the boot screen never waits on
@@ -53,8 +73,8 @@
   --gap-l: calc(22 * var(--u));
 
   --shadow-plate: 0 calc(18 * var(--u)) calc(48 * var(--u)) rgba(0, 0, 0, 0.6);
-  --glow-ion: 0 0 calc(18 * var(--u)) rgba(44, 232, 255, 0.35);
-  --glow-ember: 0 0 calc(18 * var(--u)) rgba(255, 90, 60, 0.35);
+  --glow-ion: 0 0 calc(18 * var(--u)) rgba(var(--ion-rgb), 0.35);
+  --glow-ember: 0 0 calc(18 * var(--u)) rgba(var(--ember-rgb), 0.35);
 
   /* Angled corner size used by every plate. */
   --notch: calc(14 * var(--u));
@@ -63,30 +83,54 @@
 }
 
 /* Colourblind presets remap the two team hues to pairs that stay separable
-   under the most common deficiencies. Applied on <html>. */
+   under the most common deficiencies. Applied on <html>. Each preset has to
+   restate the matching --*-rgb triplet, otherwise the translucent forms
+   (glows, row tints, the background wash) would keep the base hue. */
 :root[data-cb='protanopia'] {
-  --ion: #38c6ff;
+  /* Red is lost, so violet reads as blue: brighten it and pair with yellow. */
+  --ion: #9d7dff;
+  --ion-rgb: 157, 125, 255;
+  --ion-lite: #cbbcff;
+  --ion-deep: #241a5e;
+  --ion-deep-rgb: 36, 26, 94;
   --ember: #ffd23a;
+  --ember-rgb: 255, 210, 58;
   --magenta: #ffa73a;
 }
 :root[data-cb='deuteranopia'] {
-  --ion: #4fd0ff;
+  --ion: #a68cff;
+  --ion-rgb: 166, 140, 255;
+  --ion-lite: #d2c6ff;
+  --ion-deep: #281c5c;
+  --ion-deep-rgb: 40, 28, 92;
   --ember: #ffc23a;
+  --ember-rgb: 255, 194, 58;
   --lime: #ffe66b;
 }
 :root[data-cb='tritanopia'] {
+  /* Blue is lost, so violet collapses onto the ember red. Swap the accent to
+     teal, which survives, and keep the light end of the ramp with it. */
   --ion: #4fe0c0;
+  --ion-rgb: 79, 224, 192;
+  --ion-lite: #a8f0e0;
+  --ion-deep: #0d3f36;
+  --ion-deep-rgb: 13, 63, 54;
   --ember: #ff6f8f;
-  --violet: #ff9fd0;
+  --ember-rgb: 255, 111, 143;
 }
 :root[data-cb='highcontrast'] {
-  --ion: #00ffff;
+  --ion: #cb8bff;
+  --ion-rgb: 203, 139, 255;
+  --ion-lite: #ecd8ff;
   --ember: #ff8800;
+  --ember-rgb: 255, 136, 0;
   --ink: #ffffff;
-  --ink-dim: #d8e4f5;
-  --plate: #000306;
-  --plate-2: #04080f;
-  --edge: #4c6c94;
+  --ink-dim: #e6ddf5;
+  --plate: #010004;
+  --plate-rgb: 1, 0, 4;
+  --plate-2: #07040f;
+  --edge: #7a63ad;
+  --edge-rgb: 122, 99, 173;
 }
 
 :root[data-reduced-motion='1'] * {
@@ -705,7 +749,7 @@ input[type='range']::-moz-range-thumb {
 .bar__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: linear-gradient(90deg, var(--ion), color-mix(in srgb, var(--ion) 40%, var(--violet)));
+  background: linear-gradient(90deg, var(--ion), color-mix(in srgb, var(--ion) 40%, var(--ion-lite)));
   box-shadow: 0 0 calc(10 * var(--u)) color-mix(in srgb, var(--ion) 60%, transparent);
   transition: width 0.3s ease;
 }

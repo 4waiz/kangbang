@@ -189,9 +189,10 @@ function makeMaterial(key: string, def: MaterialDef, quality: TextureQuality, ne
    *
    * The grounded palette is non-metallic, so the metalness/roughness half of the
    * PBR model has nothing to describe: a painted wall is diffuse. Lambert drops
-   * the whole specular and IBL path, which means no environment map is needed
-   * (12 MB), fewer shader permutations to compile (93 programs before), and a
-   * measurably cheaper fragment shader on integrated GPUs.
+   * the whole specular and IBL path, which means fewer shader permutations to
+   * compile (93 programs before) and a measurably cheaper fragment shader on
+   * integrated GPUs. The renderer's environment map is procedural and free, but
+   * a Lambert material never samples it, so the level pays nothing for it.
    *
    * What is lost is the specular highlight on the few semi-metallic surfaces -
    * girders and grating. At the brightness this art direction runs at, that

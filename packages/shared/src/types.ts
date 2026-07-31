@@ -11,8 +11,8 @@ import type { Vec3 } from './math.js';
 
 export const Team = {
   None: 0,
-  Ion: 1, // cyan / blue
-  Ember: 2, // orange / magenta
+  Ion: 1, // violet / purple
+  Ember: 2, // orange / ember
 } as const;
 export type TeamId = (typeof Team)[keyof typeof Team];
 
@@ -22,15 +22,21 @@ export const TEAM_NAMES: Record<number, string> = {
   2: 'EMBER',
 };
 
+/**
+ * Team hues, mirrored from the client design system: unassigned is --ink-dim,
+ * ION is --ion and EMBER is --ember. The renderer needs ints and the HUD needs
+ * CSS strings, and neither can read a stylesheet variable, so both forms are
+ * restated here. Keep them in step with packages/client/src/styles/base.css.
+ */
 export const TEAM_COLORS: Record<number, number> = {
-  0: 0x9aa7bd,
-  1: 0x2ce8ff,
+  0: 0xa79cba,
+  1: 0xa855f7,
   2: 0xff5a3c,
 };
 
 export const TEAM_COLORS_CSS: Record<number, string> = {
-  0: '#9aa7bd',
-  1: '#2ce8ff',
+  0: '#a79cba',
+  1: '#a855f7',
   2: '#ff5a3c',
 };
 

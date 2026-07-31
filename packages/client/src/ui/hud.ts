@@ -31,6 +31,25 @@ interface Notice {
   big: boolean;
 }
 
+/**
+ * Canvas 2D has no access to CSS custom properties, so the handful of palette
+ * colours the overlay paints with are mirrored from base.css here rather than
+ * scattered as literals through the draw calls.
+ */
+const PAINT = {
+  /** --ion channels, for rgba() strings. */
+  ion: '168, 85, 247',
+  /** --void channels, the minimap backing. */
+  void: '9, 7, 14',
+  /** --ink, --ink-dim and the unassigned team grey. */
+  ink: '#f1eefb',
+  inkDim: '#ded6ef',
+  neutral: '#a79cba',
+  /** Headshots stay gold and enemies stay red: those read as meaning, not theme. */
+  headshot: '#ffd76b',
+  hostile: '#ff4d5e',
+} as const;
+
 export class Hud {
   private root: HTMLElement;
   private canvas: HTMLCanvasElement;
@@ -274,7 +293,7 @@ export class Hud {
       const victimColor = entry.victimTeam ? TEAM_COLORS_CSS[entry.victimTeam] : 'var(--ink)';
       const isMe = entry.attacker === store.name || entry.victim === store.name;
       if (isMe) node.classList.add('is-self');
-      const icon = iconMarkup(weaponIcon(entry.weapon, 22, entry.headshot ? '#ffd76b' : '#cfe0f5'));
+      const icon = iconMarkup(weaponIcon(entry.weapon, 22, entry.headshot ? PAINT.headshot : PAINT.inkDim));
       const tags = [
         entry.headshot ? '<span class="hud__feed-tag">HS</span>' : '',
         entry.wallbang ? '<span class="hud__feed-tag">WALL</span>' : '',
@@ -340,7 +359,7 @@ export class Hud {
       if (this.lastText.get(iconKey) !== '1') {
         this.lastText.delete('icon:prev');
         this.lastText.set(iconKey, '1');
-        this.el['weapon-icon'].replaceChildren(weaponIcon(hud.weapon.id, 40, '#cfe0f5'));
+        this.el['weapon-icon'].replaceChildren(weaponIcon(hud.weapon.id, 40, PAINT.inkDim));
       }
       const slots = `${hud.slot}`;
       if (this.lastText.get('slots') !== slots) {
@@ -561,7 +580,7 @@ export class Hud {
     const a = clamp(strength, 0, 1);
     ctx.save();
     ctx.globalAlpha = a;
-    ctx.strokeStyle = headshot ? '#ffd76b' : '#ffffff';
+    ctx.strokeStyle = headshot ? PAINT.headshot : '#ffffff';
     ctx.lineWidth = headshot ? 3 : 2;
     const r = 10 + (1 - a) * 8;
     if (style === 'dot') {
@@ -647,7 +666,7 @@ export class Hud {
     const ox = (size - spanX * scale) / 2;
     const oz = (size - spanZ * scale) / 2;
 
-    ctx.fillStyle = 'rgba(5,8,14,0.72)';
+    ctx.fillStyle = `rgba(${PAINT.void}, 0.72)`;
     ctx.fillRect(0, 0, size, size);
 
     // Draw brushes as filled rectangles, lowest first so upper floors sit on
@@ -725,7 +744,7 @@ export class Hud {
     if (this.matchState) {
       for (const o of this.matchState.objectives) {
         if (!o.active) continue;
-        const color = o.owner !== 0 ? TEAM_COLORS_CSS[o.owner] : '#9aa7bd';
+        const color = o.owner !== 0 ? TEAM_COLORS_CSS[o.owner] : PAINT.neutral;
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.28;
         ctx.beginPath();
@@ -735,7 +754,7 @@ export class Hud {
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.stroke();
-        ctx.fillStyle = '#e8f1ff';
+        ctx.fillStyle = PAINT.ink;
         ctx.font = '600 10px "Cascadia Mono", monospace';
         ctx.textAlign = 'center';
         ctx.fillText(o.label.slice(0, 4), toX(o.x), toY(o.z) + 3);
@@ -748,7 +767,7 @@ export class Hud {
       if (!info) continue;
       const isTeam = selfInfo && info.team === selfInfo.team && info.team !== 0;
       if (!isTeam && !this.scannedIds.has(id)) continue;
-      ctx.fillStyle = isTeam ? TEAM_COLORS_CSS[info.team] : '#ff4d5e';
+      ctx.fillStyle = isTeam ? TEAM_COLORS_CSS[info.team] : PAINT.hostile;
       ctx.beginPath();
       ctx.arc(toX(pos.x), toY(pos.z), 3.2, 0, Math.PI * 2);
       ctx.fill();
@@ -770,11 +789,11 @@ export class Hud {
     ctx.restore();
 
     // Frame.
-    ctx.strokeStyle = 'rgba(44,232,255,0.35)';
+    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.35)`;
     ctx.lineWidth = 1;
     ctx.strokeRect(x0 + 0.5, y0 + 0.5, size - 1, size - 1);
-    // Corner ticks for the sci-fi look.
-    ctx.strokeStyle = 'rgba(44,232,255,0.8)';
+    // Corner ticks, echoing the clipped corners of the plate surfaces.
+    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.8)`;
     ctx.lineWidth = 2;
     const tick = 12;
     for (const [sx, sy] of [
@@ -821,15 +840,21 @@ export class Hud {
   }
 }
 
+/**
+ * Top-down fill per material. These are a readability table, not a copy of the
+ * 3D palette: structure is a violet-grey ramp so the map reads as one surface,
+ * and only the landmarks (crates, hazards, neon, team rooms) carry a hue. Every
+ * entry has to stay separable from its neighbours at ~170px square.
+ */
 const MINIMAP_COLORS: Record<string, string> = {
-  floorPlate: '#1b2331',
-  floorLight: '#23304a',
-  concrete: '#3b4250',
-  wallLight: '#5d6577',
-  wallDark: '#161c26',
-  hull: '#2d3345',
-  trim: '#12161c',
-  grate: '#2a323f',
+  floorPlate: '#211c30',
+  floorLight: '#2c2650',
+  concrete: '#3e3a4e',
+  wallLight: '#635d75',
+  wallDark: '#191624',
+  hull: '#312c44',
+  trim: '#141220',
+  grate: '#2d2a3d',
   crate: '#4b3418',
   crateAlt: '#1f3936',
   hazard: '#6b5a1d',
@@ -837,12 +862,12 @@ const MINIMAP_COLORS: Record<string, string> = {
   neonMagenta: '#6d1e58',
   neonAmber: '#6d4c1e',
   neonLime: '#3f6d1e',
-  teamIon: '#1d6c7d',
+  teamIon: '#50218a',
   teamEmber: '#7d3521',
-  reactor: '#1d5f7d',
-  conveyor: '#14171b',
-  asphalt: '#161a20',
-  cityWall: '#20262f',
+  reactor: '#2a4d8c',
+  conveyor: '#161520',
+  asphalt: '#181622',
+  cityWall: '#232030',
   sand: '#6a5c40',
 };
 

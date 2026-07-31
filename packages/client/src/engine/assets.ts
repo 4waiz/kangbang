@@ -11,27 +11,36 @@
  * plain map at load time and strip them from the scene graph, so gameplay code
  * reads `asset.sockets.muzzle` instead of hunting the hierarchy every frame.
  *
+ * Materials: models keep the metallic/roughness PBR the exporter wrote, because
+ * the renderer now carries a procedural environment map for them to reflect.
+ * Only on low effects quality are they flattened to Lambert. See
+ * `modelMaterial()`.
+ *
  * LODs: anything above ~500 triangles is exported with a decimated `*_LOD1`
- * sibling mesh sharing the same origin. Both are in the GLB, so they must be
- * pulled apart into a `THREE.LOD` at load time - leaving them as plain siblings
- * draws the model twice, overlapping, at double the triangle cost.
+ * sibling sharing the same origin. Both are in the GLB, so they must be pulled
+ * apart into a `THREE.LOD` at load time - leaving them as plain siblings draws
+ * the model twice, overlapping, at double the triangle cost.
  */
 
 import {
+  Box3,
   BoxGeometry,
   Color,
+  FrontSide,
   Group,
   LOD,
   Mesh,
   MeshLambertMaterial,
   MeshStandardMaterial,
   Object3D,
+  Sphere,
   Vector3,
   type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { CLASSES, WEAPON_ORDER, WEAPONS } from '@kang/shared';
+import { store } from '../state/store.js';
 
 export interface LoadedAsset {
   /** Template scene; clone with `instantiate()` rather than reusing. */
@@ -40,7 +49,7 @@ export interface LoadedAsset {
   /** Triangles at full detail - what one close-up instance costs. */
   triangles: number;
   procedural: boolean;
-  /** How many meshes in this asset got a reduced-detail level. */
+  /** How many nodes in this asset got a reduced-detail level. */
   lodLevels: number;
 }
 
@@ -59,42 +68,109 @@ export interface LoadProgress {
 const BASE = 'assets/';
 
 /**
- * Distance at which a mesh switches to its reduced-detail copy.
+ * The full-detail node a `*_LOD<n>` object belongs to, or null.
  *
- * Derived from the mesh's own bounding sphere rather than a fixed number: a 2 m
+ * Two shapes have to be recognised, because glTF names the node and the mesh
+ * data separately and the loader uses whichever it has:
+ *
+ *   - a single-material LOD arrives as one Mesh named after the *node*:
+ *     `prop_x_LOD1`
+ *   - a multi-material LOD arrives as a Group named after the node whose
+ *     children are named after the *mesh data*: `char_titan_LOD1_mesh`,
+ *     `char_titan_LOD1_mesh_1`, ...
+ *
+ * Matching `_LOD<n>` against mesh names alone therefore never matched a
+ * multi-material model - which is all six characters and prop_pipe_run, every
+ * asset that actually has an LOD. Their reduced copies were never paired and
+ * rendered coincident with the original at double the triangle cost.
+ */
+export function lodBaseName(name: string): string | null {
+  const m = /^(.+)_LOD\d+(?:_mesh(?:_\d+)?)?$/.exec(name);
+  return m ? m[1] : null;
+}
+
+/**
+ * Locate the reduced-detail nodes in a loaded scene.
+ *
+ * Returns them keyed by the node they reduce, plus the set of every object
+ * inside one, so the caller can tell a reduced copy from an original while it
+ * walks the same graph for sockets, triangles and materials.
+ *
+ * `traverse` is parent-first, so once a `*_LOD<n>` node is found its whole
+ * subtree can be claimed at once and its children skipped - they carry the same
+ * name plus a `_mesh` suffix and would otherwise be picked up a second time.
+ */
+export function findLodNodes(scene: Group): {
+  nodes: Map<string, Object3D>;
+  reduced: Set<Object3D>;
+} {
+  const nodes = new Map<string, Object3D>();
+  const reduced = new Set<Object3D>();
+  scene.traverse((child) => {
+    if (reduced.has(child)) return;
+    const base = lodBaseName(child.name);
+    if (!base) return;
+    nodes.set(base, child);
+    child.traverse((n) => reduced.add(n));
+  });
+  return { nodes, reduced };
+}
+
+const boundsScratch = new Box3();
+const sphereScratch = new Sphere();
+
+/**
+ * Distance at which a node switches to its reduced-detail copy.
+ *
+ * Derived from the node's own bounds rather than a fixed number: a 2 m
  * character and a 0.4 m pickup should not swap at the same distance. The
  * multiplier is the point at which the decimation stops being visible at 1080p.
+ *
+ * Measured over the whole node, not one mesh: a multi-material model is a Group
+ * of one primitive per material, and any single primitive - a visor, a grip -
+ * is much smaller than the thing the player is looking at.
  */
-function lodSwitchDistance(mesh: Mesh): number {
-  mesh.geometry.computeBoundingSphere();
-  const radius = mesh.geometry.boundingSphere?.radius ?? 1;
+function lodSwitchDistance(node: Object3D): number {
+  boundsScratch.setFromObject(node);
+  const radius = boundsScratch.isEmpty()
+    ? 1
+    : boundsScratch.getBoundingSphere(sphereScratch).radius;
   return Math.max(12, radius * 14);
 }
 
 /**
- * Replace each mesh that has a `*_LOD1` sibling with a `THREE.LOD` holding both.
+ * Replace each node that has a `*_LOD<n>` sibling with a `THREE.LOD` holding both.
  *
  * The generators export the decimated copy into the same GLB at the same origin,
  * so without this the renderer draws full detail and reduced detail on top of
  * each other: double the triangles, plus depth and shadow artefacts where the
  * two surfaces disagree by a millimetre.
  *
- * Returns how many meshes got a level, for the diagnostics readout.
+ * Levels are whole nodes rather than single meshes, because a multi-material
+ * model is a Group of one primitive per material and all of them must swap
+ * together.
+ *
+ * Returns how many nodes got a level, for the diagnostics readout.
  */
-function attachLods(scene: Group, lodMeshes: Map<string, Mesh>): number {
-  if (lodMeshes.size === 0) return 0;
+export function attachLods(scene: Group, lodNodes: Map<string, Object3D>): number {
+  if (lodNodes.size === 0) return 0;
   let attached = 0;
 
-  for (const [baseName, low] of lodMeshes) {
-    const high = scene.getObjectByName(baseName) as Mesh | undefined;
-    // An orphaned LOD mesh (renamed base, or a generator bug) must not be left
+  for (const [baseName, low] of lodNodes) {
+    const high = scene.getObjectByName(baseName);
+    // An orphaned LOD node (renamed base, or a generator bug) must not be left
     // in the scene: it would render as a duplicate with no matching original.
-    if (!high?.isMesh) {
+    if (!high) {
       low.parent?.remove(low);
       continue;
     }
     const parent = high.parent;
     if (!parent) continue;
+
+    // Measured while the node is still in place, so the switch distance
+    // describes the size it is actually drawn at - the scale moves to the LOD
+    // below, which leaves the drawn size unchanged.
+    const distance = lodSwitchDistance(high);
 
     const lod = new LOD();
     lod.name = `${baseName}_lod`;
@@ -109,13 +185,17 @@ function attachLods(scene: Group, lodMeshes: Map<string, Mesh>): number {
       level.position.set(0, 0, 0);
       level.quaternion.identity();
       level.scale.set(1, 1, 1);
-      level.castShadow = true;
-      level.receiveShadow = false;
-      level.frustumCulled = true;
+      level.traverse((n) => {
+        const mesh = n as Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        mesh.frustumCulled = true;
+      });
     }
 
     lod.addLevel(high, 0);
-    lod.addLevel(low, lodSwitchDistance(high));
+    lod.addLevel(low, distance);
     parent.add(lod);
     attached++;
   }
@@ -123,11 +203,28 @@ function attachLods(scene: Group, lodMeshes: Map<string, Mesh>): number {
   return attached;
 }
 
+/**
+ * Draw only the front faces of a model material.
+ *
+ * Every material the generators export carries `doubleSided: true` - the
+ * Blender default rather than a decision - so all model geometry was rasterised
+ * twice: once for the surface the player can see and once for the inside of the
+ * same closed solid. The back half is never visible, so culling it is free.
+ *
+ * Transparent materials keep whatever side they were given. A single-sided pane
+ * of glass, decal or billboard vanishes when viewed from behind, and nothing
+ * here can tell which of those a transparent surface is meant to be.
+ */
+function frontFaceOnly(mat: Material): void {
+  if (mat.transparent) return;
+  mat.side = FrontSide;
+}
+
 export class AssetLibrary {
   private loader = new GLTFLoader();
   private assets = new Map<string, LoadedAsset>();
   private manifest: AssetManifest | null = null;
-  private materialCache = new Map<string, MeshLambertMaterial>();
+  private materialCache = new Map<string, Material>();
   /** Names we already reported as missing, so the console stays readable. */
   private warned = new Set<string>();
 
@@ -199,11 +296,12 @@ export class AssetLibrary {
       const scene = gltf.scene as Group;
       const sockets: Record<string, Vector3> = {};
       const doomed: Object3D[] = [];
-      /** `*_LOD1` meshes, keyed by the base name they belong to. */
-      const lodMeshes = new Map<string, Mesh>();
       let triangles = 0;
 
       scene.updateMatrixWorld(true);
+      // Found up front so the walk below can tell a reduced-detail copy from the
+      // original it duplicates; the pairing itself happens after the walk.
+      const lods = findLodNodes(scene);
       scene.traverse((child) => {
         if (child.name.startsWith('SOCKET_')) {
           const key = child.name.slice(7);
@@ -213,31 +311,22 @@ export class AssetLibrary {
         }
         const mesh = child as Mesh;
         if (!mesh.isMesh) return;
-        const lodMatch = /^(.*)_LOD(\d+)$/.exec(mesh.name);
-        if (lodMatch) {
-          // Held back and paired with its full-detail sibling below. Not counted
-          // in `triangles`, which reports what a close-up instance costs.
-          lodMeshes.set(lodMatch[1], mesh);
-          return;
-        }
         mesh.castShadow = true;
         mesh.receiveShadow = false;
         mesh.frustumCulled = true;
-        const geo = mesh.geometry;
-        if (geo.index) triangles += geo.index.count / 3;
-        else if (geo.attributes.position) triangles += geo.attributes.position.count / 3;
-        // Blender's glTF exporter always writes metallic/roughness PBR, so every
-        // model arrives as MeshStandardMaterial. The scene has no environment
-        // map any more, and a metallic Standard material with nothing to reflect
-        // renders black - so these are converted to Lambert rather than left as
-        // they are. Conversion also collapses the shader permutations the level
-        // and the models would otherwise compile separately.
+        // Reduced copies are not counted in `triangles`, which reports what a
+        // close-up instance costs - and a close-up instance draws full detail.
+        if (!lods.reduced.has(mesh)) {
+          const geo = mesh.geometry;
+          if (geo.index) triangles += geo.index.count / 3;
+          else if (geo.attributes.position) triangles += geo.attributes.position.count / 3;
+        }
         const mat = mesh.material as MeshStandardMaterial | MeshStandardMaterial[];
-        if (Array.isArray(mat)) mesh.material = mat.map((m) => this.toLambert(m));
-        else if (mat) mesh.material = this.toLambert(mat);
+        if (Array.isArray(mat)) mesh.material = mat.map((m) => this.modelMaterial(m));
+        else if (mat) mesh.material = this.modelMaterial(mat);
       });
       for (const d of doomed) d.parent?.remove(d);
-      const lodLevels = attachLods(scene, lodMeshes);
+      const lodLevels = attachLods(scene, lods.nodes);
 
       this.assets.set(name, {
         scene,
@@ -302,21 +391,69 @@ export class AssetLibrary {
   }
 
   // ---------------------------------------------------------------------
-  // Procedural fallbacks
+  // Materials
   // ---------------------------------------------------------------------
 
   /**
-   * Convert a PBR material from a GLB into the flat lit equivalent.
+   * Prepare a material that arrived inside a GLB.
+   *
+   * Blender's glTF exporter always writes metallic/roughness PBR, so every model
+   * arrives as a MeshStandardMaterial. Those are now kept as PBR: the renderer
+   * carries a procedural environment map (see `Renderer.installEnvironment`), so
+   * metalness and roughness finally have something to reflect and a barrel reads
+   * as metal instead of as painted plastic. Normal and AO maps ride along for
+   * free, which is what makes a detailed weapon model worth authoring at all.
+   *
+   * Low effects quality still takes the Lambert path. A full specular BRDF plus
+   * an image-based lighting lookup per fragment is exactly what a weak GPU
+   * cannot afford, and flattening also collapses the shader permutations the
+   * level and the models would otherwise compile separately.
+   *
+   * The setting is read per material as the model loads. Models are loaded once
+   * at boot, so a change mid-session takes effect on the next reload; the
+   * alternative is holding every source material alive for the whole session to
+   * re-derive from.
+   */
+  private modelMaterial(src: MeshStandardMaterial): Material {
+    return store.str('effectsQuality') === 'low' ? this.toLambert(src) : this.toStandard(src);
+  }
+
+  /**
+   * Keep the PBR material, with the two things a GLB cannot say for itself.
+   *
+   * Adjusted in place rather than copied: a copy would have to enumerate every
+   * map the exporter might have written - base colour, normal, AO, metalness,
+   * roughness, alpha - and would silently drop whichever one gets added next.
    *
    * Cached by the source material's uuid, because a joined mesh reuses one
-   * material across many objects and converting per-object would multiply draw
-   * calls. Colour, emissive and any map carry over; metalness and roughness are
-   * dropped, which is the point.
+   * material across many objects (and across its own LOD levels), so this must
+   * run once per material rather than once per object.
+   */
+  private toStandard(src: MeshStandardMaterial): MeshStandardMaterial {
+    const cacheKey = `standard:${src.uuid}`;
+    const hit = this.materialCache.get(cacheKey);
+    if (hit) return hit as MeshStandardMaterial;
+
+    frontFaceOnly(src);
+    // A transparent surface writing depth occludes what is behind it.
+    if (src.transparent) src.depthWrite = false;
+    this.materialCache.set(cacheKey, src);
+    return src;
+  }
+
+  /**
+   * Flatten a PBR material from a GLB into the cheap lit equivalent.
+   *
+   * Colour, emissive and the base colour map carry over; metalness, roughness
+   * and the normal and AO maps are dropped, which is the point of this path -
+   * it exists to get the specular and IBL work out of the fragment shader.
+   *
+   * Cached by the source material's uuid, for the same reason as `toStandard`.
    */
   private toLambert(src: MeshStandardMaterial): MeshLambertMaterial {
     const cacheKey = `lambert:${src.uuid}`;
     const hit = this.materialCache.get(cacheKey);
-    if (hit) return hit;
+    if (hit) return hit as MeshLambertMaterial;
 
     const mat = new MeshLambertMaterial({
       color: src.color?.clone() ?? new Color(0xffffff),
@@ -328,21 +465,21 @@ export class AssetLibrary {
       depthWrite: src.transparent ? false : src.depthWrite,
       vertexColors: src.vertexColors,
     });
+    frontFaceOnly(mat);
     if (src.emissive && (src.emissive.r || src.emissive.g || src.emissive.b)) {
       mat.emissive = src.emissive.clone();
       mat.emissiveMap = src.emissiveMap ?? null;
       /*
-       * Clamp the emissive into display range.
+       * Authored strength, passed through.
        *
-       * The generators author strengths of 5-7 for glowing trim, which the old
-       * ACES filmic curve rolled off into a shaped highlight. With no tone curve
-       * - the right choice for a grounded palette - anything over 1.0 clips flat
-       * to pure white, so every weapon and character wore white slabs where its
-       * trim should be. Clamping to just under 1 keeps the part reading as lit
-       * without destroying the colour and the surface detail underneath.
+       * This used to be clamped to just under 1.0. With no tone curve in the
+       * renderer, anything brighter clipped flat to pure white, so every weapon
+       * and character wore white slabs where its glowing trim should be. The
+       * ACES filmic curve is back (see Renderer), and it rolls values above 1.0
+       * into a shaped highlight - so the clamp now destroys detail instead of
+       * saving it, and the generators' strengths are used as authored.
        */
-      const peak = Math.max(src.emissive.r, src.emissive.g, src.emissive.b) || 1;
-      mat.emissiveIntensity = Math.min(src.emissiveIntensity, 0.85 / peak);
+      mat.emissiveIntensity = src.emissiveIntensity;
     }
     mat.name = src.name;
     this.materialCache.set(cacheKey, mat);
@@ -352,8 +489,12 @@ export class AssetLibrary {
     return mat;
   }
 
+  // ---------------------------------------------------------------------
+  // Procedural fallbacks
+  // ---------------------------------------------------------------------
+
   private material(key: string, color: number, emissive = 0): MeshLambertMaterial {
-    const hit = this.materialCache.get(key);
+    const hit = this.materialCache.get(key) as MeshLambertMaterial | undefined;
     if (hit) return hit;
     const mat = new MeshLambertMaterial({ color: new Color(color) });
     if (emissive) {

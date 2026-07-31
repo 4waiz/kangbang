@@ -115,9 +115,9 @@ export function modeIcon(iconKey: string, size = 24, color = 'currentColor'): HT
 }
 
 /** The KANG BANG mark: a hex plate with a bolt cut through it. */
-export function logoMark(size = 64, color = '#2ce8ff'): string {
+export function logoMark(size = 64, color = '#a855f7'): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-    <path d="M32 4 56 17v30L32 60 8 47V17z" stroke="${color}" stroke-width="2.6" fill="rgba(44,232,255,0.06)"/>
+    <path d="M32 4 56 17v30L32 60 8 47V17z" stroke="${color}" stroke-width="2.6" fill="${color}" fill-opacity=".06"/>
     <path d="M32 10 50 20v24L32 54 14 44V20z" stroke="${color}" stroke-opacity=".35" stroke-width="1.2"/>
     <path d="M36.5 16 22 34h9l-2.5 14L44 30h-9.5z" fill="${color}"/>
   </svg>`;
@@ -158,7 +158,7 @@ export function uiIcon(key: string, size = 20, color = 'currentColor'): HTMLSpan
 }
 
 /** Banner/profile-icon glyphs, drawn as abstract emblems. */
-export function glyphIcon(glyph: string, size = 32, color = '#4fd8ff'): HTMLSpanElement {
+export function glyphIcon(glyph: string, size = 32, color = '#c084fc'): HTMLSpanElement {
   const bodies: Record<string, string> = {
     grid: '<path d="M3 3h18v18H3z"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',
     pulse: '<path d="M2 12h4l3-7 4 14 3-7h6"/>',

@@ -8,11 +8,12 @@
  * omission - see docs/PERFORMANCE.md.
  *
  * Quality settings map onto: render scale, shadow map size, antialias mode,
- * and whether the bloom composite runs at all.
+ * whether the bloom composite runs at all, and whether models are shaded as PBR
+ * or flattened to a cheap lit material (see AssetLibrary).
  */
 
 import {
-  NoToneMapping,
+  ACESFilmicToneMapping,
   Color,
   DirectionalLight,
   Fog,
@@ -20,6 +21,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PCFSoftShadowMap,
+  PMREMGenerator,
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
@@ -27,7 +29,9 @@ import {
   SphereGeometry,
   Vector3,
   WebGLRenderer,
+  type Texture,
 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { MapAmbience } from '@kang/shared';
 import { store } from '../state/store.js';
 import { skyTexture, type TextureQuality } from './textures.js';
@@ -44,6 +48,21 @@ export interface RendererStats {
 
 const SHADOW_SIZES: Record<string, number> = { off: 0, low: 1024, medium: 2048, high: 4096 };
 
+/**
+ * How much of the procedural environment reaches a surface. See
+ * `installEnvironment()`: the room is a brightly lit white box, and at full
+ * strength it lifts the shadow side of every model into flat grey and cancels
+ * out the sun. This is enough to fill a highlight, not enough to light a scene.
+ */
+const ENVIRONMENT_INTENSITY = 0.7;
+
+/**
+ * Blur radius, in radians, applied before convolving the room.
+ * The room is a handful of hard-edged boxes; without this its corners show up
+ * as distinct reflected edges on anything smooth enough to mirror them.
+ */
+const ENVIRONMENT_BLUR = 0.04;
+
 export class Renderer {
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
@@ -55,6 +74,8 @@ export class Renderer {
   readonly sun: DirectionalLight;
   readonly hemi: HemisphereLight;
   private sky: Mesh | null = null;
+  /** Procedural image-based lighting, generated once at boot. */
+  private envMap: Texture | null = null;
 
   readonly canvas: HTMLCanvasElement;
   private width = 1;
@@ -83,9 +104,21 @@ export class Renderer {
       preserveDrawingBuffer: false,
     });
     this.renderer.outputColorSpace = SRGBColorSpace;
-    // No tone curve: the palette is already in display range, and a filmic
-    // curve on flat lit surfaces just muddies them.
-    this.renderer.toneMapping = NoToneMapping;
+    /*
+     * ACES filmic tone mapping.
+     *
+     * Models are shaded as PBR again (see AssetLibrary), which means specular
+     * highlights and emissive trim routinely land above 1.0. With no tone curve
+     * everything above 1.0 clips flat to pure white - which is exactly why the
+     * emissive on every model used to be clamped down to 0.85 to compensate,
+     * losing its colour and the surface detail underneath. ACES rolls the top
+     * end off into a shaped highlight instead, so the clamp is gone.
+     *
+     * The level's Lambert brushes are already authored in display range and are
+     * barely touched by the curve; it is the specular half of the model
+     * materials that needs somewhere above 1.0 to go.
+     */
+    this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.renderer.autoClear = true;
     this.renderer.info.autoReset = false;
@@ -132,6 +165,9 @@ export class Renderer {
 
     this.applyQuality();
     this.resize();
+    // After resize(): the generator borrows the renderer to convolve the room,
+    // and it should do that with the drawing buffer already at its final size.
+    this.installEnvironment();
 
     window.addEventListener('resize', () => this.resize());
     store.on('settings', () => {
@@ -157,9 +193,11 @@ export class Renderer {
     this.viewCamera.updateProjectionMatrix();
 
     this.renderScale = store.num('resolutionScale');
-    // `bloom` is now a small exposure lift rather than a post pass: with no
-    // tone curve and few emissive surfaces there is nothing for a real bloom
-    // to bloom, and on integrated GPUs the pass cost more than the frame.
+    // `bloom` is a small exposure lift rather than a post pass: at this emissive
+    // density there is very little for a real bloom to bloom, and on integrated
+    // GPUs the pass cost more than the frame. With the ACES curve back, nudging
+    // exposure pushes highlights further up the shoulder, which is the part of
+    // a bloom pass anyone actually noticed.
     this.renderer.toneMappingExposure = store.bool('bloom') ? 1.06 : 1.0;
   }
 
@@ -180,20 +218,46 @@ export class Renderer {
   }
 
   /**
-   * There is deliberately no environment map.
+   * Image-based lighting from a procedural room, built once at boot.
    *
-   * The previous art direction was metallic sci-fi, and a metallic PBR material
-   * with nothing to reflect renders black, so the skybox had to be convolved into
-   * a PMREM cubemap to make the level readable. That cubemap measured 1536x2048
-   * and was the single largest allocation in the process at 12 MB - more than the
-   * entire rest of the texture budget.
+   * A PBR material with any metalness reflects its environment, and with nothing
+   * in `scene.environment` it reflects black - which is why model materials used
+   * to be flattened to Lambert on the way in. Something has to be there before
+   * metal can read as metal.
    *
-   * The grounded palette is non-metallic (see MATERIALS in shared/sim/world.ts),
-   * so image-based lighting buys nothing: painted concrete and coated steel are
-   * described completely by albedo plus a hemisphere and a sun. Removing it costs
-   * one specular highlight nobody was looking at and returns 12 MB.
+   * The obvious source, the skybox convolved into a PMREM cubemap, was removed
+   * for good reason: at 1536x2048 it was 12 MB and the single largest allocation
+   * in the process. `RoomEnvironment` is the same idea for none of the download.
+   * It is a dozen boxes and a point light constructed in JavaScript, rendered
+   * once into a small cubemap and then thrown away - no asset ships with the
+   * build, and nothing is fetched at runtime.
+   *
+   * Only MeshStandardMaterial reads `scene.environment`, so this reaches the
+   * models and leaves the level's Lambert brushes and the unlit sky untouched -
+   * the grounded palette (see MATERIALS in shared/sim/world.ts) is non-metallic
+   * and gains nothing from IBL.
    */
+  private installEnvironment(): void {
+    try {
+      const pmrem = new PMREMGenerator(this.renderer);
+      const room = new RoomEnvironment();
+      this.envMap = pmrem.fromScene(room, ENVIRONMENT_BLUR).texture;
+      // The room geometry and the generator's scratch targets are only needed
+      // while convolving; the resulting texture does not reference either.
+      room.dispose();
+      pmrem.dispose();
 
+      this.scene.environment = this.envMap;
+      this.viewScene.environment = this.envMap;
+      this.scene.environmentIntensity = ENVIRONMENT_INTENSITY;
+      this.viewScene.environmentIntensity = ENVIRONMENT_INTENSITY;
+    } catch (err) {
+      // Losing IBL costs a highlight; failing to construct the renderer costs
+      // the game, so a driver that cannot do this still boots.
+      // eslint-disable-next-line no-console
+      console.warn('[renderer] environment map unavailable, models will look flat', err);
+    }
+  }
 
   /** Apply a map's lighting + fog + skybox. */
   applyAmbience(a: MapAmbience): void {
@@ -294,6 +358,10 @@ export class Renderer {
   }
 
   dispose(): void {
+    this.envMap?.dispose();
+    this.envMap = null;
+    this.scene.environment = null;
+    this.viewScene.environment = null;
     this.renderer.dispose();
   }
 }

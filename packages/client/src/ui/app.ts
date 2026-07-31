@@ -823,7 +823,7 @@ export class App {
             this.applyLoadoutToServer();
           },
         },
-        classIcon(id, 26, locked ? '#66768f' : '#4fd8ff'),
+        classIcon(id, 26, locked ? '#7d6f97' : '#c084fc'),
         el(
           'span',
           { class: 'grow' },
@@ -831,7 +831,7 @@ export class App {
           el('br'),
           el('span', { class: 'pick__meta' }, locked ? `LOCKED · LV ${cls.unlockLevel}` : cls.role.toUpperCase()),
         ),
-        locked ? uiIcon('lock', 16, '#66768f') : null,
+        locked ? uiIcon('lock', 16, '#7d6f97') : null,
       );
       list.appendChild(btn);
     }
@@ -995,7 +995,7 @@ export class App {
                 style: { background: `#${(skin.accent ?? skin.color ?? 0x666666).toString(16).padStart(6, '0')}` },
               }),
               el('span', { class: 'swatch__name' }, skin.name),
-              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#66768f')) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#7d6f97')) : null,
             );
           }),
         ),
@@ -1025,7 +1025,7 @@ export class App {
               renderWeaponDetail(w);
             },
           },
-          weaponIcon(w.id, 36, locked ? '#66768f' : '#cfe0f5'),
+          weaponIcon(w.id, 36, locked ? '#7d6f97' : '#ded6ef'),
           el(
             'span',
             { class: 'grow' },
@@ -1033,7 +1033,7 @@ export class App {
             el('br'),
             el('span', { class: 'pick__meta' }, locked ? `LV ${w.unlockLevel}` : `${w.damage} DMG · ${w.rpm} RPM`),
           ),
-          locked ? uiIcon('lock', 16, '#66768f') : null,
+          locked ? uiIcon('lock', 16, '#7d6f97') : null,
         );
         weaponList.appendChild(btn);
       }
@@ -1131,7 +1131,7 @@ export class App {
                 ? glyphIcon(c.glyph, 26, swatchColor)
                 : el('span', { class: 'swatch__chip', style: { background: swatchColor } }),
               el('span', { class: 'swatch__name' }, c.name),
-              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#66768f')) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#7d6f97')) : null,
             );
           }),
         ),
@@ -1979,7 +1979,7 @@ export class App {
             el(
               'div',
               { class: `roster__row${p.name === store.name ? ' is-self' : ''}` },
-              classIcon(p.classId, 18, team ? TEAM_COLORS_CSS[team] : '#9aa7bd'),
+              classIcon(p.classId, 18, team ? TEAM_COLORS_CSS[team] : '#a79cba'),
               el('span', {}, p.name, p.bot ? el('span', { class: 'faint' }, ' · BOT') : null),
               el('span', { class: 'roster__level' }, `LV ${p.accountLevel}`),
               p.ready ? chip('READY', 'chip--good') : chip('...'),

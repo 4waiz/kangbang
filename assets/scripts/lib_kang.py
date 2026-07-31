@@ -6,21 +6,43 @@ third-party meshes anywhere in the project. Running `npm run assets` reproduces
 the entire art set from source.
 
 Design rules encoded here:
-  * Low poly by construction. Shapes are built from vertex lists, not from
-    primitives that are then decimated, so triangle counts are exact and
-    predictable.
-  * Y up, -Z forward, metres. Matches the engine and glTF's convention after
-    the exporter's +Y-up conversion.
-  * One material per visual role (body / trim / energy / glass). Fewer materials
-    means fewer draw calls once the client merges them.
+
+  * Built from explicit vertex data, not from primitives that are then
+    decimated, so triangle counts stay predictable even at high density.
+  * Y up, -Z forward, metres, for weapons and props. Characters author Z up
+    facing -Y. `reorient()` lands both on the engine's axes at export.
+  * Real PBR values. The client keeps metalness and roughness and lights models
+    with a procedurally generated environment, so authoring a barrel at
+    metallic 0.9 / roughness 0.3 now produces an actual metal barrel.
+  * One material per visual role. Each material is a separate glTF primitive
+    and therefore a separate draw call, so roles are kept few and deliberate.
   * Every object gets a deliberate name; the client looks up sockets like
     `SOCKET_muzzle` by name rather than by index.
+
+Two things drive the shapes more than anything else:
+
+  BEVEL. No real object has a perfectly sharp edge. A 1-2 mm bevel catches a
+  highlight along every corner, and that highlight is most of what separates a
+  render that reads as machined metal from one that reads as an untextured box.
+  It is cheap - three segments on an edge loop - and it is the single highest
+  value-per-triangle detail available.
+
+  CROSS-SECTION. Guns and bodies are extrusions and revolutions, not stacks of
+  boxes. `extrude_profile`, `lathe` and `loft` let a shape be described by its
+  silhouette, which is how the objects are actually made, so the result has
+  correct proportion for free.
+
+Operators are avoided throughout. `bpy.ops` depends on an active object, a
+selection and a screen context, all of which behave differently between
+`--background` and an interactive session driven over MCP. The helpers here use
+the data API and the dependency graph instead, so the same code runs in both.
 
 Usage from a generator script:
 
     import lib_kang as N
     N.reset_scene()
     body = N.box("body", (0, 0, 0), (0.08, 0.09, 0.5), N.MAT_BODY)
+    N.bevel(body, 0.0018)
     N.export_glb("wpn_example")
 """
 
@@ -30,6 +52,7 @@ import math
 import os
 import sys
 
+import bmesh
 import bpy
 import mathutils
 
@@ -57,56 +80,80 @@ def log(message: str) -> None:
 
 # (name, base_color, metallic, roughness, emission_color, emission_strength)
 #
-# Grounded materials: real firearms and kit, not energy weapons. Three things
-# changed together here, and each one was causing a visible problem.
+# These are real PBR values now. The client preserves metalness and roughness
+# and lights models with a PMREM-filtered procedural environment, so a metallic
+# surface has something to reflect and reads as metal rather than as black.
 #
-#   Emission strengths were 5-7 on the `energy` materials. The client dropped its
-#   filmic tone curve when the palette went grounded, so anything over 1.0 clips
-#   flat to pure white - every weapon and character wore white slabs where its
-#   trim should be. Nothing here emits above 0.8 now, and almost nothing emits at
-#   all, because a rifle does not glow.
-#
-#   Metallic was 0.72-0.90 on the body and trim. A metallic surface with no
-#   environment map to reflect renders black, and the client no longer ships one
-#   (it was 12 MB). Real gun finishes are coated, phosphated or polymer, so low
-#   metallic is both cheaper and more accurate.
-#
-#   The `energy_*` names are kept as aliases so no generator has to change, but
-#   they are now paint and marking colours. What was a glowing cyan strip is a
-#   painted blue panel.
+# Roughness is what actually distinguishes the parts of a firearm from each
+# other: a phosphated receiver, an anodised aluminium handguard and a polymer
+# grip are all near enough the same dark grey in albedo, and it is only the
+# spread of the highlight that tells them apart. Authoring them at the same
+# roughness is what made the old models read as one moulded lump.
 MATERIAL_LIBRARY = {
-    # Weapon and armour bodies: phosphate grey, polymer black, worn aluminium.
-    "ns_body": ((0.29, 0.31, 0.33, 1.0), 0.25, 0.52, None, 0.0),
-    "ns_body_dark": ((0.13, 0.14, 0.15, 1.0), 0.18, 0.62, None, 0.0),
-    "ns_body_light": ((0.60, 0.62, 0.64, 1.0), 0.22, 0.48, None, 0.0),
-    "ns_trim": ((0.09, 0.09, 0.10, 1.0), 0.30, 0.44, None, 0.0),
-    "ns_grip": ((0.10, 0.10, 0.11, 1.0), 0.02, 0.86, None, 0.0),
+    # --- Firearm and armour surfaces ---------------------------------------
+    # Phosphate/parkerised steel: the default receiver finish. Matte, dark,
+    # slightly warm.
+    "ns_body": ((0.052, 0.053, 0.056, 1.0), 0.88, 0.44, None, 0.0),
+    # Polymer furniture - grips, handguards, stocks. Not metal at all.
+    "ns_body_dark": ((0.026, 0.027, 0.030, 1.0), 0.02, 0.58, None, 0.0),
+    # Bead-blasted aluminium: receivers, optic bodies. Lighter and glossier.
+    "ns_body_light": ((0.136, 0.140, 0.148, 1.0), 0.90, 0.34, None, 0.0),
+    # Blued/black-oxide small parts: pins, levers, sights, screws.
+    "ns_trim": ((0.038, 0.038, 0.042, 1.0), 0.92, 0.28, None, 0.0),
+    # Textured rubber overmould. Very rough, no specular character.
+    "ns_grip": ((0.020, 0.020, 0.023, 1.0), 0.0, 0.82, None, 0.0),
 
-    # Marking and accent colours. Painted, not lit.
-    "ns_energy_cyan": ((0.16, 0.38, 0.55, 1.0), 0.05, 0.60, None, 0.0),
-    "ns_energy_lime": ((0.24, 0.45, 0.24, 1.0), 0.05, 0.62, None, 0.0),
-    "ns_energy_amber": ((0.68, 0.45, 0.14, 1.0), 0.05, 0.58, None, 0.0),
-    "ns_energy_violet": ((0.42, 0.34, 0.46, 1.0), 0.05, 0.62, None, 0.0),
-    # Off-white plastic and painted steel, e.g. sights and stencils.
-    "ns_energy_white": ((0.84, 0.85, 0.84, 1.0), 0.05, 0.52, None, 0.0),
+    # --- Marking and accent colours ----------------------------------------
+    # Painted or anodised, not glowing. The `energy_*` names are historical
+    # aliases kept so generators need not all change at once.
+    "ns_energy_cyan": ((0.055, 0.180, 0.290, 1.0), 0.30, 0.42, None, 0.0),
+    "ns_energy_lime": ((0.105, 0.240, 0.095, 1.0), 0.30, 0.44, None, 0.0),
+    "ns_energy_amber": ((0.480, 0.230, 0.035, 1.0), 0.30, 0.40, None, 0.0),
+    "ns_energy_violet": ((0.240, 0.130, 0.400, 1.0), 0.30, 0.42, None, 0.0),
+    # Off-white polymer and painted stencils.
+    "ns_energy_white": ((0.760, 0.770, 0.775, 1.0), 0.05, 0.46, None, 0.0),
 
-    "ns_glass": ((0.62, 0.70, 0.74, 0.30), 0.0, 0.10, None, 0.0),
-    "ns_skin": ((0.76, 0.58, 0.45, 1.0), 0.0, 0.64, None, 0.0),
+    # Optic glass. Slight blue-violet coating tint, as real lens coatings have.
+    "ns_glass": ((0.42, 0.52, 0.62, 0.24), 0.0, 0.04, None, 0.0),
+
+    # --- Skin and cloth ----------------------------------------------------
+    # Skin is dielectric with a broad, soft highlight - never metallic, never
+    # mirror-smooth. Getting roughness right here is most of what stops a face
+    # reading as plastic.
+    "ns_skin": ((0.480, 0.322, 0.246, 1.0), 0.0, 0.56, None, 0.0),
+    "ns_skin_dark": ((0.230, 0.140, 0.098, 1.0), 0.0, 0.54, None, 0.0),
+    "ns_skin_light": ((0.640, 0.470, 0.386, 1.0), 0.0, 0.58, None, 0.0),
+    "ns_hair": ((0.042, 0.032, 0.026, 1.0), 0.0, 0.62, None, 0.0),
+    "ns_eye": ((0.72, 0.73, 0.75, 1.0), 0.0, 0.16, None, 0.0),
+    "ns_iris": ((0.098, 0.132, 0.160, 1.0), 0.0, 0.20, None, 0.0),
+    # Cordura / ripstop webbing and uniform cloth.
+    "ns_cloth": ((0.088, 0.092, 0.084, 1.0), 0.0, 0.86, None, 0.0),
+    "ns_cloth_dark": ((0.040, 0.042, 0.040, 1.0), 0.0, 0.88, None, 0.0),
+    # Ballistic nylon plate carrier, slightly sheenier than uniform cloth.
+    "ns_armor": ((0.062, 0.066, 0.062, 1.0), 0.0, 0.70, None, 0.0),
+    "ns_leather": ((0.078, 0.052, 0.036, 1.0), 0.0, 0.66, None, 0.0),
 
     # Team identification: a painted armband and a helmet patch. Faint emission
-    # only, so it stays readable across a room without glowing.
-    "ns_team": ((0.20, 0.42, 0.66, 1.0), 0.05, 0.58, (0.20, 0.42, 0.66), 0.25),
-    # Tinted eye protection. Dark and slightly glossy, no glow.
-    "ns_visor": ((0.09, 0.11, 0.13, 1.0), 0.20, 0.18, None, 0.0),
+    # only. The client tints any material whose emissive is non-zero, so the
+    # emission here is what makes a face team-colourable at all - it is a hook,
+    # not a glow.
+    "ns_team": ((0.180, 0.360, 0.620, 1.0), 0.05, 0.52, (0.180, 0.360, 0.620), 0.30),
+    # Tinted eye protection: dark, smooth, slightly reflective.
+    "ns_visor": ((0.035, 0.042, 0.052, 1.0), 0.35, 0.12, None, 0.0),
 
-    "ns_rubber": ((0.08, 0.08, 0.09, 1.0), 0.02, 0.90, None, 0.0),
-    # Brass cases, the one genuinely metallic thing left, and small enough that
-    # having nothing to reflect does not read as a fault.
-    "ns_brass": ((0.68, 0.54, 0.26, 1.0), 0.55, 0.36, None, 0.0),
-    "ns_crate": ((0.52, 0.38, 0.20, 1.0), 0.06, 0.74, None, 0.0),
+    "ns_rubber": ((0.024, 0.024, 0.026, 1.0), 0.0, 0.88, None, 0.0),
+    # Brass cases and links.
+    "ns_brass": ((0.620, 0.470, 0.180, 1.0), 0.95, 0.26, None, 0.0),
+    "ns_copper": ((0.540, 0.290, 0.150, 1.0), 0.95, 0.30, None, 0.0),
+    # Bare/worn steel, brighter than the phosphate finish.
+    "ns_steel": ((0.290, 0.295, 0.305, 1.0), 0.95, 0.22, None, 0.0),
+    "ns_crate": ((0.240, 0.160, 0.078, 1.0), 0.0, 0.76, None, 0.0),
+    "ns_wood": ((0.180, 0.108, 0.052, 1.0), 0.0, 0.62, None, 0.0),
+    "ns_concrete": ((0.180, 0.180, 0.176, 1.0), 0.0, 0.92, None, 0.0),
+    "ns_paint_red": ((0.320, 0.048, 0.036, 1.0), 0.10, 0.50, None, 0.0),
     # Safety yellow. Real hazard markings are retroreflective, so a hint of
     # emission is defensible and keeps them legible in shadow.
-    "ns_hazard": ((0.84, 0.70, 0.18, 1.0), 0.05, 0.58, (0.84, 0.70, 0.18), 0.18),
+    "ns_hazard": ((0.640, 0.480, 0.055, 1.0), 0.05, 0.54, (0.640, 0.480, 0.055), 0.20),
 }
 
 MAT_BODY = "ns_body"
@@ -121,11 +168,25 @@ MAT_VIOLET = "ns_energy_violet"
 MAT_WHITE = "ns_energy_white"
 MAT_GLASS = "ns_glass"
 MAT_SKIN = "ns_skin"
+MAT_SKIN_DARK = "ns_skin_dark"
+MAT_SKIN_LIGHT = "ns_skin_light"
+MAT_HAIR = "ns_hair"
+MAT_EYE = "ns_eye"
+MAT_IRIS = "ns_iris"
+MAT_CLOTH = "ns_cloth"
+MAT_CLOTH_DARK = "ns_cloth_dark"
+MAT_ARMOR = "ns_armor"
+MAT_LEATHER = "ns_leather"
 MAT_TEAM = "ns_team"
 MAT_VISOR = "ns_visor"
 MAT_RUBBER = "ns_rubber"
 MAT_BRASS = "ns_brass"
+MAT_COPPER = "ns_copper"
+MAT_STEEL = "ns_steel"
 MAT_CRATE = "ns_crate"
+MAT_WOOD = "ns_wood"
+MAT_CONCRETE = "ns_concrete"
+MAT_PAINT_RED = "ns_paint_red"
 MAT_HAZARD = "ns_hazard"
 
 
@@ -142,6 +203,9 @@ def get_material(name: str) -> bpy.types.Material:
 
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
+    # glTF writes doubleSided = not use_backface_culling. Every mesh here is a
+    # closed solid, so culling backfaces halves the fragment work for free.
+    mat.use_backface_culling = True
     nodes = mat.node_tree.nodes
     bsdf = nodes.get("Principled BSDF")
     if bsdf is None:
@@ -169,15 +233,22 @@ def get_material(name: str) -> bpy.types.Material:
 
 
 def reset_scene() -> None:
-    """Empty the file completely so a generator always starts clean."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    """
+    Empty the file completely so a generator always starts clean.
+
+    `read_homefile` rather than `read_factory_settings`: the two are equivalent
+    with these arguments, but the latter is refused when this module is driven
+    from an interactive session, and being able to run the same generator both
+    headlessly and live is worth more than the shorter call.
+    """
+    bpy.ops.wm.read_homefile(use_empty=True, use_factory_startup=True)
     scene = bpy.context.scene
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.length_unit = "METERS"
     # A single sun so the .blend is viewable when opened by a human.
-    sun_data = bpy.data.lights.new("NeonSun", type="SUN")
+    sun_data = bpy.data.lights.new("KangSun", type="SUN")
     sun_data.energy = 3.0
-    sun = bpy.data.objects.new("NeonSun", sun_data)
+    sun = bpy.data.objects.new("KangSun", sun_data)
     sun.rotation_euler = (math.radians(55), 0.0, math.radians(35))
     scene.collection.objects.link(sun)
 
@@ -208,16 +279,440 @@ def mesh_from_data(
 
 
 # ---------------------------------------------------------------------------
-# Primitives - all built from explicit data for exact triangle counts
+# Mesh operations - all operator-free, see the module docstring
 # ---------------------------------------------------------------------------
 
+
+def apply_modifiers(obj: bpy.types.Object) -> bpy.types.Object:
+    """
+    Bake an object's modifier stack into its mesh.
+
+    `bpy.ops.object.modifier_apply` needs an active object in a 3D viewport
+    context and fails outright when there is not one. Evaluating the dependency
+    graph and taking the resulting mesh does the same job with no context at
+    all, which is why every modifier helper below routes through here.
+
+    The view-layer update is not optional. A Boolean modifier resolves its
+    cutter through that object's world matrix, and a matrix is only recomputed
+    on update - so without this, a cutter positioned since the last update is
+    still evaluated at its old transform.
+    """
+    bpy.context.view_layer.update()
+    deps = bpy.context.evaluated_depsgraph_get()
+    new_mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(deps))
+    obj.modifiers.clear()
+    old = obj.data
+    new_mesh.name = old.name
+    obj.data = new_mesh
+    if old.users == 0:
+        bpy.data.meshes.remove(old)
+    return obj
+
+
+def bevel(
+    obj: bpy.types.Object,
+    width: float = 0.0015,
+    segments: int = 3,
+    angle: float = 55.0,
+    clamp: bool = True,
+) -> bpy.types.Object:
+    """
+    Round every edge sharper than `angle` degrees.
+
+    This is the highest value detail in the whole library. A bevel is what puts
+    a highlight along a corner, and a corner that catches light is what makes a
+    surface read as a machined object rather than as flat shading on a box.
+    Widths are in metres: 1-2 mm suits a receiver, 0.5 mm a small control.
+
+    `clamp` keeps the bevel from overrunning short edges and self-intersecting,
+    which matters because these shapes have a lot of small features.
+    """
+    mod = obj.modifiers.new("bevel", type="BEVEL")
+    mod.width = width
+    mod.segments = segments
+    mod.limit_method = "ANGLE"
+    mod.angle_limit = math.radians(angle)
+    mod.miter_outer = "MITER_ARC"
+    mod.use_clamp_overlap = clamp
+    mod.harden_normals = False
+    return apply_modifiers(obj)
+
+
+def smooth_by_angle(obj: bpy.types.Object, angle: float = 38.0) -> bpy.types.Object:
+    """
+    Shade smooth across gentle joins and flat across sharp ones.
+
+    Blender 4.1 removed `Mesh.use_auto_smooth` in favour of a geometry-nodes
+    modifier, but the underlying behaviour is still driven by per-edge sharp
+    flags, so setting those directly is both simpler and version-proof. Faces
+    are all marked smooth; an edge whose two faces meet at more than `angle`
+    is marked sharp, and Blender splits the normal there.
+
+    Run this after joining, so one threshold covers the whole model: a lathed
+    barrel has small face angles and goes smooth, a receiver corner is 90
+    degrees and stays crisp.
+    """
+    mesh = obj.data
+    limit = math.radians(angle)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    for edge in bm.edges:
+        edge.smooth = edge.calc_face_angle(0.0) < limit if len(edge.link_faces) == 2 else True
+    bm.to_mesh(mesh)
+    bm.free()
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    mesh.update()
+    return obj
+
+
+def boolean(
+    obj: bpy.types.Object,
+    cutter: bpy.types.Object,
+    operation: str = "DIFFERENCE",
+    remove_cutter: bool = True,
+) -> bpy.types.Object:
+    """Cut `cutter` out of `obj` (or union/intersect) and bake the result."""
+    mod = obj.modifiers.new("bool", type="BOOLEAN")
+    mod.operation = operation
+    mod.object = cutter
+    mod.solver = "EXACT"
+    apply_modifiers(obj)
+    if remove_cutter:
+        bpy.data.objects.remove(cutter, do_unlink=True)
+    return obj
+
+
+def join(name: str, objects: list[bpy.types.Object]) -> bpy.types.Object:
+    """
+    Merge objects into one mesh, preserving per-face materials.
+
+    Merging matters: 40 loose objects per weapon would be 40 nodes, and the
+    client cannot batch across separate glTF nodes. Object transforms are baked
+    into the vertices on the way in, so the exported mesh needs no hierarchy.
+
+    Material slots are de-duplicated and face indices remapped, so the joined
+    mesh has exactly as many primitives as it has distinct materials.
+
+    The view-layer update on the way in is load-bearing. `matrix_world` is
+    derived, not stored: assigning `obj.location` does not refresh it until the
+    dependency graph re-evaluates. Without the update every part baked at
+    whatever transform it had at the last evaluation - in practice identity -
+    so a whole assembly collapsed onto the origin, silently and without error.
+    """
+    objects = [o for o in objects if o is not None and o.type == "MESH"]
+    if not objects:
+        raise ValueError(f"join({name}) received no meshes")
+    bpy.context.view_layer.update()
+
+    verts: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    face_materials: list[int] = []
+    materials: list[bpy.types.Material] = []
+
+    for obj in objects:
+        mesh = obj.data
+        matrix = obj.matrix_world
+        base = len(verts)
+        remap: dict[int, int] = {}
+        for index, mat in enumerate(mesh.materials):
+            if mat is None:
+                remap[index] = 0
+                continue
+            if mat not in materials:
+                materials.append(mat)
+            remap[index] = materials.index(mat)
+        for vert in mesh.vertices:
+            co = matrix @ vert.co
+            verts.append((co.x, co.y, co.z))
+        for poly in mesh.polygons:
+            faces.append(tuple(base + i for i in poly.vertices))
+            face_materials.append(remap.get(poly.material_index, 0))
+
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(verts, [], faces)
+    for mat in materials:
+        mesh.materials.append(mat)
+    mesh.validate(verbose=False)
+    mesh.update()
+    # from_pydata may drop degenerate faces, so only assign what survived.
+    for index, poly in enumerate(mesh.polygons):
+        if index < len(face_materials):
+            poly.material_index = face_materials[index]
+
+    merged = bpy.data.objects.new(name, mesh)
+    _link(merged)
+    for obj in objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
+    return merged
+
+
+def mirror_x(obj: bpy.types.Object, name: str | None = None) -> bpy.types.Object:
+    """
+    Duplicate an object mirrored across X, keeping winding correct.
+
+    Negative scale flips face winding, so the copy's faces are reversed to
+    compensate; without that the mirrored half renders inside-out once
+    backface culling is on.
+    """
+    mesh = obj.data.copy()
+    for poly in mesh.polygons:
+        poly.flip()
+    mesh.update()
+    dup = bpy.data.objects.new(name or f"{obj.name}_mirror", mesh)
+    dup.location = (-obj.location.x, obj.location.y, obj.location.z)
+    dup.rotation_euler = (obj.rotation_euler.x, -obj.rotation_euler.y, -obj.rotation_euler.z)
+    dup.scale = (-obj.scale.x, obj.scale.y, obj.scale.z)
+    _link(dup)
+    return dup
+
+
+def shade_flat(obj: bpy.types.Object) -> None:
+    for poly in obj.data.polygons:
+        poly.use_smooth = False
+
+
+def weld(obj: bpy.types.Object, distance: float = 0.00005) -> bpy.types.Object:
+    """Merge coincident vertices. Cleans up seams left by booleans."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=distance)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    return obj
+
+
+# ---------------------------------------------------------------------------
+# Cross-section helpers
+#
+# A profile is a list of (x, y) points describing a closed loop, wound
+# counter-clockwise. `extrude_profile` and `loft` turn profiles into solids.
+# ---------------------------------------------------------------------------
+
+
+def ellipse(rx: float, ry: float, segments: int = 16, cx: float = 0.0, cy: float = 0.0) -> list[tuple[float, float]]:
+    """Elliptical cross-section. Limbs, tubes, necks."""
+    return [
+        (cx + math.cos(i / segments * math.tau) * rx, cy + math.sin(i / segments * math.tau) * ry)
+        for i in range(segments)
+    ]
+
+
+def superellipse(
+    rx: float,
+    ry: float,
+    exponent: float = 4.0,
+    segments: int = 16,
+    cx: float = 0.0,
+    cy: float = 0.0,
+) -> list[tuple[float, float]]:
+    """
+    Rounded-rectangle cross-section: |x/rx|^n + |y/ry|^n = 1.
+
+    The most useful profile in the library. n=2 is an ellipse, n=4 reads as a
+    rounded rectangle, n=8 is nearly square with radiused corners. Receivers,
+    handguards, magazines and human torsos are all superellipses, and being
+    able to dial the corner sharpness with one number is what lets a torso
+    taper from a rounded-square ribcage into an oval waist in a single loft.
+    """
+    points: list[tuple[float, float]] = []
+    for i in range(segments):
+        theta = i / segments * math.tau
+        c, s = math.cos(theta), math.sin(theta)
+        # Signed power keeps the sign while shaping the magnitude.
+        x = math.copysign(abs(c) ** (2.0 / exponent), c) * rx
+        y = math.copysign(abs(s) ** (2.0 / exponent), s) * ry
+        points.append((cx + x, cy + y))
+    return points
+
+
+def rect_profile(width: float, height: float, cx: float = 0.0, cy: float = 0.0) -> list[tuple[float, float]]:
+    hw, hh = width / 2.0, height / 2.0
+    return [(cx - hw, cy - hh), (cx + hw, cy - hh), (cx + hw, cy + hh), (cx - hw, cy + hh)]
+
+
+def scale_profile(profile: list[tuple[float, float]], sx: float, sy: float,
+                  dx: float = 0.0, dy: float = 0.0) -> list[tuple[float, float]]:
+    """Scale and offset a profile. Used to build loft sections from one shape."""
+    return [(x * sx + dx, y * sy + dy) for x, y in profile]
+
+
+def extrude_profile(
+    name: str,
+    profile: list[tuple[float, float]],
+    z0: float,
+    z1: float,
+    material: str = MAT_BODY,
+    center: tuple[float, float] = (0.0, 0.0),
+    cap_start: bool = True,
+    cap_end: bool = True,
+) -> bpy.types.Object:
+    """
+    Extrude a closed 2D cross-section along Z.
+
+    The right tool whenever the silhouette lives in cross-section: receivers,
+    handguards, rails, magazines, ducts, beams.
+    """
+    n = len(profile)
+    cx, cy = center
+    # Extruding toward -Z reverses handedness exactly as an odd axis
+    # permutation does, so the profile order has to be reversed to compensate.
+    # Callers legitimately write z0 > z1 when a part reads more naturally
+    # muzzle-first, and silently inverting their normals would be a trap.
+    pts = list(reversed(profile)) if z1 < z0 else profile
+    verts = [(x + cx, y + cy, z0) for x, y in pts] + [(x + cx, y + cy, z1) for x, y in pts]
+    faces: list[tuple[int, ...]] = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    if cap_start:
+        faces.append(tuple(reversed(range(n))))
+    if cap_end:
+        faces.append(tuple(range(n, 2 * n)))
+    return mesh_from_data(name, verts, faces, material)
+
+
+def loft(
+    name: str,
+    sections: list[tuple[float, list[tuple[float, float]]]],
+    material: str = MAT_BODY,
+    cap_start: bool = True,
+    cap_end: bool = True,
+    smooth: bool = True,
+    axis: str = "Z",
+) -> bpy.types.Object:
+    """
+    Skin a stack of cross-sections into a solid.
+
+    `sections` is [(t, profile), ...] ordered along `axis`, every profile
+    having the same point count. This is how anything organic gets made: a
+    torso is six superellipses from hips to shoulders, a forearm is four
+    ellipses with a bulge at the elbow, a head is a dozen sections shaped to a
+    skull. Stacked boxes cannot produce those, which is exactly why the old
+    characters read as robots.
+
+    `axis` picks which world axis the sections stack along, and the profile
+    fills the other two. Build along the axis a part actually runs on rather
+    than lofting along Z and rotating afterwards: a rotation composes with the
+    part's own rake or curve, and getting that composition wrong silently
+    points a pistol grip down the barrel instead of at the floor.
+    """
+    if len(sections) < 2:
+        raise ValueError(f"loft({name}) needs at least two sections")
+    n = len(sections[0][1])
+    for _, profile in sections:
+        if len(profile) != n:
+            raise ValueError(f"loft({name}) sections must all have {n} points")
+
+    axis = axis.upper()
+    place = {
+        "Z": lambda u, v, t: (u, v, t),
+        "Y": lambda u, v, t: (u, t, v),
+        "X": lambda u, v, t: (t, u, v),
+    }[axis]
+    # Two independent things reverse handedness, and either one alone leaves
+    # the solid inside-out once backface culling is on:
+    #   * (u, v, t) -> (u, t, v) swaps two axes, an odd permutation. The X case
+    #     is a cyclic rotation and needs no correction.
+    #   * Sections ordered descending along the axis, which callers write all
+    #     the time - a pistol grip and a magazine both run downward from the
+    #     receiver, and writing them top-down is the readable way round.
+    # They cancel when both apply, so combine them with xor rather than or.
+    descending = sections[-1][0] < sections[0][0]
+    flip = (axis == "Y") != descending
+
+    verts: list[tuple[float, float, float]] = []
+    for t, profile in sections:
+        pts = list(reversed(profile)) if flip else profile
+        verts.extend(place(u, v, t) for u, v in pts)
+
+    faces: list[tuple[int, ...]] = []
+    for s in range(len(sections) - 1):
+        base, nxt = s * n, (s + 1) * n
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append((base + i, base + j, nxt + j, nxt + i))
+    if cap_start:
+        faces.append(tuple(reversed(range(n))))
+    if cap_end:
+        faces.append(tuple(range(len(verts) - n, len(verts))))
+    return mesh_from_data(name, verts, faces, material, smooth=smooth)
+
+
+def lathe(
+    name: str,
+    profile: list[tuple[float, float]],
+    material: str = MAT_BODY,
+    segments: int = 20,
+    center: tuple[float, float] = (0.0, 0.0),
+) -> bpy.types.Object:
+    """
+    Revolve a (radius, z) profile about Z.
+
+    Barrels, suppressors, scope tubes, bottles, pipes - anything turned on a
+    lathe in reality should be turned on one here. A radius of 0 at either end
+    closes the shape into a point, which is how muzzle crowns and tips are cut.
+    """
+    verts: list[tuple[float, float, float]] = []
+    cx, cy = center
+    for radius, z in profile:
+        for i in range(segments):
+            angle = i / segments * math.tau
+            verts.append((math.cos(angle) * radius + cx, math.sin(angle) * radius + cy, z))
+
+    faces: list[tuple[int, ...]] = []
+    for s in range(len(profile) - 1):
+        base, nxt = s * segments, (s + 1) * segments
+        for i in range(segments):
+            j = (i + 1) % segments
+            faces.append((base + i, base + j, nxt + j, nxt + i))
+    if profile[0][0] > 1e-6:
+        faces.append(tuple(range(segments)))
+    if profile[-1][0] > 1e-6:
+        faces.append(tuple(reversed(range((len(profile) - 1) * segments, len(profile) * segments))))
+    return mesh_from_data(name, verts, faces, material, smooth=True)
+
+
+def tube(
+    name: str,
+    outer: float,
+    inner: float,
+    z0: float,
+    z1: float,
+    material: str = MAT_BODY,
+    segments: int = 20,
+    center: tuple[float, float] = (0.0, 0.0),
+) -> bpy.types.Object:
+    """
+    Hollow cylinder with a real wall.
+
+    A barrel that is a solid cylinder has a flat disc where its bore should be,
+    and at the muzzle - the part of the weapon nearest the camera for the whole
+    match - that reads immediately as fake.
+    """
+    return lathe(
+        name,
+        [(outer, z0), (outer, z1), (inner, z1), (inner, z0), (outer, z0)],
+        material,
+        segments,
+        center,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Primitives
+# ---------------------------------------------------------------------------
+
+# Wound so every normal points out of the solid. This was inverted for a long
+# time and never showed, because the exporter marked every material
+# double-sided and the client honoured that. Enabling backface culling makes
+# winding load-bearing: an inward-wound box renders as a hole.
 _BOX_FACES = [
-    (0, 1, 2, 3),  # -Z
-    (4, 7, 6, 5),  # +Z
-    (0, 4, 5, 1),  # -Y
-    (2, 6, 7, 3),  # +Y
-    (0, 3, 7, 4),  # -X
-    (1, 5, 6, 2),  # +X
+    (3, 2, 1, 0),  # -Z
+    (5, 6, 7, 4),  # +Z
+    (1, 5, 4, 0),  # -Y
+    (3, 7, 6, 2),  # +Y
+    (4, 7, 3, 0),  # -X
+    (2, 6, 5, 1),  # +X
 ]
 
 
@@ -233,7 +728,7 @@ def box(
     Axis-aligned box (before `rotation`, in degrees).
 
     `taper` scales the +Z face in X and Y, which turns a box into a truncated
-    wedge - the single most useful shape for low-poly weapon bodies.
+    wedge.
     """
     hx, hy, hz = size[0] / 2.0, size[1] / 2.0, size[2] / 2.0
     tx, ty = taper
@@ -253,19 +748,35 @@ def box(
     return obj
 
 
+def rounded_box(
+    name: str,
+    center: tuple[float, float, float],
+    size: tuple[float, float, float],
+    material: str = MAT_BODY,
+    radius: float = 0.004,
+    segments: int = 3,
+    rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> bpy.types.Object:
+    """Box with radiused edges. A box plus `bevel`, kept as one call."""
+    obj = box(name, center, size, material, rotation)
+    smallest = min(size)
+    bevel(obj, min(radius, smallest * 0.32), segments)
+    return obj
+
+
 def cylinder(
     name: str,
     center: tuple[float, float, float],
     radius: float,
     length: float,
-    segments: int = 8,
+    segments: int = 16,
     material: str = MAT_BODY,
     axis: str = "Z",
     radius_top: float | None = None,
     rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
     smooth: bool = True,
 ) -> bpy.types.Object:
-    """N-gon prism/cone along `axis`. 8 segments reads as round at game scale."""
+    """N-gon prism/cone along `axis`."""
     if radius_top is None:
         radius_top = radius
     half = length / 2.0
@@ -313,11 +824,11 @@ def wedge(
         (hx, hy, hz),
     ]
     faces = [
-        (0, 1, 2, 3),
-        (3, 2, 5, 4),
-        (0, 4, 5, 1),
-        (0, 3, 4),
-        (1, 5, 2),
+        (3, 2, 1, 0),
+        (4, 5, 2, 3),
+        (1, 5, 4, 0),
+        (4, 3, 0),
+        (2, 5, 1),
     ]
     obj = mesh_from_data(name, verts, faces, material)
     obj.location = center
@@ -330,19 +841,21 @@ def sphere(
     center: tuple[float, float, float],
     radius: float,
     material: str = MAT_BODY,
-    rings: int = 6,
-    segments: int = 8,
+    rings: int = 10,
+    segments: int = 16,
+    scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
 ) -> bpy.types.Object:
-    """Low-poly UV sphere; used for helmets, pods and energy cores."""
-    verts: list[tuple[float, float, float]] = [(0.0, 0.0, radius)]
+    """UV sphere, optionally squashed into an ellipsoid by `scale`."""
+    sx, sy, sz = scale
+    verts: list[tuple[float, float, float]] = [(0.0, 0.0, radius * sz)]
     for r in range(1, rings):
         phi = math.pi * r / rings
         z = math.cos(phi) * radius
         rr = math.sin(phi) * radius
         for s in range(segments):
             a = (s / segments) * math.tau
-            verts.append((math.cos(a) * rr, math.sin(a) * rr, z))
-    verts.append((0.0, 0.0, -radius))
+            verts.append((math.cos(a) * rr * sx, math.sin(a) * rr * sy, z * sz))
+    verts.append((0.0, 0.0, -radius * sz))
 
     faces: list[tuple[int, ...]] = []
     for s in range(segments):
@@ -370,21 +883,22 @@ def capsule(
     length: float,
     material: str = MAT_BODY,
     axis: str = "Z",
-    segments: int = 8,
+    segments: int = 16,
 ) -> bpy.types.Object:
     """Rounded limb segment: a prism with domed caps, joined as one mesh."""
     half = max(0.0001, length / 2.0 - radius)
-    verts: list[tuple[float, float, float]] = []
-    faces: list[tuple[int, ...]] = []
-
     rings = [
-        (-half - radius * 0.86, radius * 0.34),
-        (-half - radius * 0.5, radius * 0.72),
+        (-half - radius * 0.92, radius * 0.26),
+        (-half - radius * 0.71, radius * 0.56),
+        (-half - radius * 0.38, radius * 0.84),
         (-half, radius),
         (half, radius),
-        (half + radius * 0.5, radius * 0.72),
-        (half + radius * 0.86, radius * 0.34),
+        (half + radius * 0.38, radius * 0.84),
+        (half + radius * 0.71, radius * 0.56),
+        (half + radius * 0.92, radius * 0.26),
     ]
+    verts: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
     for z, r in rings:
         for s in range(segments):
             a = (s / segments) * math.tau
@@ -394,17 +908,16 @@ def capsule(
         nxt = base + segments
         for s in range(segments):
             s2 = (s + 1) % segments
-            faces.append((base + s, nxt + s, nxt + s2, base + s2))
-    # Caps.
+            faces.append((base + s, base + s2, nxt + s2, nxt + s))
     verts.append((0.0, 0.0, -half - radius))
     bottom_tip = len(verts) - 1
     for s in range(segments):
-        faces.append((bottom_tip, (s + 1) % segments, s))
+        faces.append((bottom_tip, s, (s + 1) % segments))
     verts.append((0.0, 0.0, half + radius))
     top_tip = len(verts) - 1
     top_base = (len(rings) - 1) * segments
     for s in range(segments):
-        faces.append((top_tip, top_base + s, top_base + (s + 1) % segments))
+        faces.append((top_tip, top_base + (s + 1) % segments, top_base + s))
 
     obj = mesh_from_data(name, verts, faces, material, smooth=True)
     rot = [0.0, 0.0, 0.0]
@@ -421,9 +934,9 @@ def socket(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
     """
     Empty marker exported with the GLB.
 
-    The client reads `SOCKET_muzzle`, `SOCKET_eject` and `SOCKET_grip` to attach
-    muzzle flashes, shell ejection and the left-hand IK target, so those points
-    live in the art rather than being duplicated as magic numbers in code.
+    The client reads `SOCKET_muzzle` and `SOCKET_eject` to place muzzle flashes
+    and shell ejection, so those points live in the art rather than being
+    duplicated as magic numbers in code.
     """
     empty = bpy.data.objects.new(f"SOCKET_{name}", None)
     empty.empty_display_type = "PLAIN_AXES"
@@ -434,72 +947,156 @@ def socket(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 
 
 # ---------------------------------------------------------------------------
-# Composition helpers
+# Firearm detail assemblies
 # ---------------------------------------------------------------------------
 
+# MIL-STD-1913: 21.2 mm across the base, chamfered at 45 degrees to a narrower
+# top. Getting this cross-section right matters more than it sounds - a
+# picatinny rail is the single most recognisable "this is a real firearm"
+# feature, and a plain bar with notches does not read as one.
+RAIL_PROFILE = [
+    (-0.0106, 0.0),
+    (0.0106, 0.0),
+    (0.0106, 0.0026),
+    (0.0080, 0.0052),
+    (-0.0080, 0.0052),
+    (-0.0106, 0.0026),
+]
 
-def mirror_x(obj: bpy.types.Object, name: str | None = None) -> bpy.types.Object:
-    """Duplicate an object mirrored across X, keeping winding correct."""
-    new_mesh = obj.data.copy()
-    dup = bpy.data.objects.new(name or f"{obj.name}_mirror", new_mesh)
-    dup.location = (-obj.location.x, obj.location.y, obj.location.z)
-    dup.rotation_euler = (obj.rotation_euler.x, -obj.rotation_euler.y, -obj.rotation_euler.z)
-    dup.scale = (-obj.scale.x, obj.scale.y, obj.scale.z)
-    _link(dup)
-    return dup
 
-
-def join(name: str, objects: list[bpy.types.Object]) -> bpy.types.Object:
+def picatinny(
+    name: str,
+    z_center: float,
+    length: float,
+    y: float,
+    material: str = MAT_TRIM,
+    x: float = 0.0,
+) -> bpy.types.Object:
     """
-    Merge objects into one, preserving per-face materials.
+    Rail section with its recoil grooves actually cut through.
 
-    Merging matters: 18 loose objects per weapon would be 18 draw calls, and the
-    client cannot batch across separate glTF nodes.
+    Booleaning the slots rather than stacking blocks on top gives real
+    shadowed recesses, and the slot pitch (10.2 mm) is what sets the scale
+    of the whole weapon for the viewer.
     """
-    objects = [o for o in objects if o is not None and o.type == "MESH"]
-    if not objects:
-        raise ValueError(f"join({name}) received no meshes")
-    bpy.ops.object.select_all(action="DESELECT")
-    for o in objects:
-        o.select_set(True)
-    target = objects[0]
-    bpy.context.view_layer.objects.active = target
-    if len(objects) > 1:
-        bpy.ops.object.join()
-    target.name = name
-    target.data.name = f"{name}_mesh"
-    # Bake transforms so the exported mesh needs no node hierarchy.
-    bpy.ops.object.select_all(action="DESELECT")
-    target.select_set(True)
-    bpy.context.view_layer.objects.active = target
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    return target
+    rail = extrude_profile(
+        name, RAIL_PROFILE, z_center - length / 2.0, z_center + length / 2.0, material, center=(x, y)
+    )
+    count = max(2, int(length / 0.0102))
+    cutters = []
+    for i in range(count):
+        t = (i + 0.5) / count
+        z = z_center - length / 2.0 + t * length
+        cutters.append(box(f"{name}_c{i}", (x, y + 0.0046, z), (0.030, 0.0068, 0.0040), material))
+    cutter = join(f"{name}_cutter", cutters)
+    boolean(rail, cutter)
+    return weld(rail)
 
 
-def shade_flat(obj: bpy.types.Object) -> None:
-    for poly in obj.data.polygons:
-        poly.use_smooth = False
+def barrel(
+    name: str,
+    z_muzzle: float,
+    z_breech: float,
+    radius: float = 0.0092,
+    bore: float = 0.0039,
+    material: str = MAT_TRIM,
+    center: tuple[float, float] = (0.0, 0.0),
+    segments: int = 20,
+    crown: float = 0.0016,
+) -> bpy.types.Object:
+    """
+    Barrel with an open bore and a crowned muzzle.
+
+    The lathe profile runs muzzle-first: out along the crown chamfer, down the
+    outside to the breech, back up the bore. A closed disc at the muzzle is the
+    single most obvious tell of a fake gun, and this is the cheapest possible
+    fix - about 40 extra triangles.
+    """
+    return lathe(
+        name,
+        [
+            (bore, z_muzzle),
+            (bore + crown, z_muzzle + crown),   # crown chamfer
+            (radius, z_muzzle + crown * 1.6),
+            (radius, z_breech),
+            (bore, z_breech),
+            (bore, z_muzzle),
+        ],
+        material,
+        segments,
+        center,
+    )
+
+
+def knurl(
+    name: str,
+    z_center: float,
+    length: float,
+    radius: float,
+    material: str = MAT_TRIM,
+    center: tuple[float, float] = (0.0, 0.0),
+    teeth: int = 16,
+    depth: float = 0.0008,
+) -> bpy.types.Object:
+    """Ribbed grip band: a cylinder whose radius alternates around the circle."""
+    verts: list[tuple[float, float, float]] = []
+    cx, cy = center
+    segments = teeth * 2
+    for z in (z_center - length / 2.0, z_center + length / 2.0):
+        for i in range(segments):
+            a = i / segments * math.tau
+            r = radius + (depth if i % 2 == 0 else -depth)
+            verts.append((math.cos(a) * r + cx, math.sin(a) * r + cy, z))
+    faces: list[tuple[int, ...]] = []
+    for i in range(segments):
+        j = (i + 1) % segments
+        faces.append((i, j, segments + j, segments + i))
+    faces.append(tuple(reversed(range(segments))))
+    faces.append(tuple(range(segments, segments * 2)))
+    return mesh_from_data(name, verts, faces, material)
+
+
+def mlok_slots(
+    body: bpy.types.Object,
+    z_start: float,
+    z_end: float,
+    y: float,
+    x: float = 0.0,
+    count: int = 4,
+    width: float = 0.0095,
+    length: float = 0.032,
+    depth: float = 0.02,
+) -> bpy.types.Object:
+    """Cut M-LOK style slots into a handguard face. Reads as a modern rifle."""
+    cutters = []
+    span = z_end - z_start
+    for i in range(count):
+        t = (i + 0.5) / count
+        z = z_start + t * span
+        cutters.append(box(f"mlok{i}", (x, y, z), (width, depth, length), MAT_TRIM))
+    return weld(boolean(body, join("mlok_cutter", cutters)))
+
+
+# ---------------------------------------------------------------------------
+# UVs, LODs, measurement
+# ---------------------------------------------------------------------------
 
 
 def add_uvs(obj: bpy.types.Object) -> None:
     """
     Cheap box-projected UVs.
 
-    The client's materials are procedural, so weapons only need UVs to exist and
-    be non-degenerate; a smart-project pass per weapon would triple build time
-    for no visible gain.
+    The client's model materials carry no image textures, so UVs only need to
+    exist and be non-degenerate; a smart-project pass per asset would multiply
+    build time for no visible gain.
     """
     mesh = obj.data
-    if mesh.uv_layers:
-        uv = mesh.uv_layers[0]
-    else:
-        uv = mesh.uv_layers.new(name="UVMap")
+    uv = mesh.uv_layers[0] if mesh.uv_layers else mesh.uv_layers.new(name="UVMap")
     for poly in mesh.polygons:
         n = poly.normal
         ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
         for li in poly.loop_indices:
-            vi = mesh.loops[li].vertex_index
-            v = mesh.vertices[vi].co
+            v = mesh.vertices[mesh.loops[li].vertex_index].co
             if ax >= ay and ax >= az:
                 u, w = v.y, v.z
             elif ay >= az:
@@ -510,32 +1107,20 @@ def add_uvs(obj: bpy.types.Object) -> None:
 
 
 def triangle_count(obj: bpy.types.Object) -> int:
-    total = 0
-    for poly in obj.data.polygons:
-        total += max(0, len(poly.vertices) - 2)
-    return total
+    return sum(max(0, len(poly.vertices) - 2) for poly in obj.data.polygons)
 
 
 def decimate_copy(obj: bpy.types.Object, name: str, ratio: float) -> bpy.types.Object:
-    """
-    Build an LOD by collapsing edges.
-
-    Only used for assets above ~500 triangles; below that the draw call costs
-    more than the geometry and an LOD is wasted effort.
-    """
+    """Build an LOD by collapsing edges."""
     dup = obj.copy()
     dup.data = obj.data.copy()
     dup.name = name
     dup.data.name = f"{name}_mesh"
     _link(dup)
-    bpy.ops.object.select_all(action="DESELECT")
-    dup.select_set(True)
-    bpy.context.view_layer.objects.active = dup
     mod = dup.modifiers.new("LOD", type="DECIMATE")
     mod.decimate_type = "COLLAPSE"
     mod.ratio = ratio
-    bpy.ops.object.modifier_apply(modifier=mod.name)
-    return dup
+    return apply_modifiers(dup)
 
 
 # ---------------------------------------------------------------------------
@@ -572,9 +1157,9 @@ def reorient(mode: str) -> None:
     transformed_meshes: set[str] = set()
     for obj in list(bpy.data.objects):
         if obj.type == "MESH":
-            # join()/transform_apply have already baked object transforms, so
-            # transforming the mesh data is enough - and each mesh datablock
-            # must only be transformed once even if several objects share it.
+            # join() has already baked object transforms, so transforming the
+            # mesh data is enough - and each mesh datablock must only be
+            # transformed once even if several objects share it.
             if obj.data.name not in transformed_meshes:
                 obj.data.transform(matrix)
                 obj.data.update()
@@ -591,9 +1176,10 @@ def export_glb(name: str, save_blend: bool = True, objects: list[bpy.types.Objec
             add_uvs(obj)
 
     if objects is not None:
-        bpy.ops.object.select_all(action="DESELECT")
-        for o in objects:
-            o.select_set(True)
+        for obj in bpy.data.objects:
+            obj.select_set(False)
+        for obj in objects:
+            obj.select_set(True)
 
     if save_blend:
         blend_path = os.path.join(SOURCE_DIR, f"{name}.blend")
@@ -614,8 +1200,9 @@ def export_glb(name: str, save_blend: bool = True, objects: list[bpy.types.Objec
         export_materials="EXPORT",
         export_animations=True,
     )
-    # Draco shrinks these meshes by ~60%, but only when Blender was built with
-    # the encoder available. Fall back silently rather than failing the build.
+    # Draco is what makes high-poly affordable here: it shrinks these meshes by
+    # roughly 80%, and the client already requires the extension. Fall back
+    # silently rather than failing the build if the encoder is unavailable.
     try:
         bpy.ops.export_scene.gltf(**kwargs, export_draco_mesh_compression_enable=True,
                                   export_draco_mesh_compression_level=6)
@@ -630,12 +1217,55 @@ def export_glb(name: str, save_blend: bool = True, objects: list[bpy.types.Objec
     return glb_path
 
 
+def finish(
+    name: str,
+    parts: list[bpy.types.Object],
+    smooth_angle: float = 38.0,
+    lod_threshold: int = 2600,
+    lod_ratio: float = 0.34,
+    orient: str = "yup",
+    recenter: bool = False,
+) -> bpy.types.Object:
+    """
+    The common tail of every generator: join, shade, LOD, orient, export.
+
+    Kept in one place because the order matters and is easy to get wrong.
+    Smoothing has to happen after the join so a single angle threshold applies
+    across the whole model, and the LOD has to be built before `reorient` so
+    both meshes are transformed together.
+    """
+    obj = join(name, parts)
+    weld(obj)
+    smooth_by_angle(obj, smooth_angle)
+    add_uvs(obj)
+
+    if recenter:
+        # World pickups spin about their own middle on a pedestal.
+        lo = [min(v.co[i] for v in obj.data.vertices) for i in range(3)]
+        hi = [max(v.co[i] for v in obj.data.vertices) for i in range(3)]
+        offset = [(lo[i] + hi[i]) / 2.0 for i in range(3)]
+        for vert in obj.data.vertices:
+            for i in range(3):
+                vert.co[i] -= offset[i]
+        obj.data.update()
+
+    tris = triangle_count(obj)
+    if tris > lod_threshold:
+        lod = decimate_copy(obj, f"{name}_LOD1", lod_ratio)
+        smooth_by_angle(lod, smooth_angle)
+        add_uvs(lod)
+
+    reorient(orient)
+    export_glb(name)
+    return obj
+
+
 def only_arg(flag: str) -> str | None:
     """Read `-- --only=<value>` from the Blender command line."""
     argv = sys.argv
     if "--" not in argv:
         return None
-    for token in argv[argv.index("--") + 1 :]:
+    for token in argv[argv.index("--") + 1:]:
         if token.startswith(f"--{flag}="):
             return token.split("=", 1)[1]
     return None
