@@ -25,3 +25,8 @@ packages/server/data/
 assets/source/*.blend1
 assets/.cache/
 tools/.blender-path
+
+# Python bytecode. Blender imports the generator scripts, so it writes these
+# next to the sources on every asset build.
+__pycache__/
+*.pyc

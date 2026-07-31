@@ -361,12 +361,21 @@ def folding_sight(z, y, front=True, material=N.MAT_TRIM):
 
 
 def bipod(z, y, material=N.MAT_TRIM, spread=22.0, leg=0.098):
+    """
+    Deployed bipod. Legs run down (-Y), not forward.
+
+    A lathe is built along its own +Z, and in this authoring space -Z is
+    forward while -Y is down, so the legs need rotating +90 degrees about X to
+    hang. Rotating 180 - the intuitive "turn it upside down" - points them out
+    of the muzzle instead, which is a mistake that renders as a flat bar under
+    the barrel rather than as anything obviously wrong.
+    """
     parts = [N.box("bipod_mount", (0.0, y + 0.008, z), (0.0230, 0.0200, 0.0300), material)]
     for side in (-1, 1):
         parts.append(N.lathe(f"bipod_leg{side}", [(0.0052, 0.0), (0.0052, leg), (0.0038, leg)],
                              material, 10, (0.0, 0.0)))
         parts[-1].location = (side * 0.0110, y, z)
-        parts[-1].rotation_euler = (math.radians(180), 0.0, math.radians(side * spread))
+        parts[-1].rotation_euler = (math.radians(90), 0.0, math.radians(side * spread))
         parts.append(N.box(f"bipod_foot{side}", (side * (0.0110 + leg * math.sin(math.radians(spread))),
                                                  y - leg * math.cos(math.radians(spread)), z),
                            (0.0140, 0.0080, 0.0220), N.MAT_RUBBER))
@@ -520,14 +529,32 @@ def build_rail_sniper() -> list:
         (0.040,  N.superellipse(0.0212, 0.0280, 6.0, 16, cy=Y + 0.002)),
         (0.130,  N.superellipse(0.0200, 0.0260, 5.0, 16, cy=Y - 0.004)),
     ], N.MAT_BODY_LIGHT, smooth=False))
-    # Skeletonised butt with an adjustable cheek riser.
-    p.append(N.box("butt_top", (0.0, Y + 0.030, 0.184), (0.0300, 0.0180, 0.1200), N.MAT_BODY_LIGHT))
-    p.append(N.box("butt_bottom", (0.0, Y - 0.036, 0.196), (0.0280, 0.0160, 0.0900), N.MAT_BODY_LIGHT))
-    p.append(N.box("cheek_riser", (0.0, Y + 0.052, 0.150), (0.0340, 0.0180, 0.1100), N.MAT_BODY_DARK))
-    p.append(N.box("buttpad", (0.0, Y - 0.002, 0.246), (0.0420, 0.0900, 0.0140), N.MAT_RUBBER))
-    p.append(N.lathe("cheek_post", [(0.0038, 0.0), (0.0038, 0.034)], N.MAT_TRIM, 8, (0.0, 0.0)))
-    p[-1].location = (0.0, Y + 0.020, 0.150)
-    p[-1].rotation_euler = (math.radians(-90), 0.0, 0.0)
+    # Solid butt with a thumbhole cut through it, and an adjustable cheek
+    # riser on top. This started out as a skeletonised frame of thin bars,
+    # which is what a real chassis stock is, but at view-model scale the bars
+    # read as loose debris floating behind the receiver - a solid block with a
+    # hole cut in it gives the same outline and is fewer triangles.
+    butt = N.loft("butt", [
+        (0.126, N.superellipse(0.0196, 0.0480, 4.0, 16, cy=Y + 0.004)),
+        (0.180, N.superellipse(0.0206, 0.0560, 4.0, 16, cy=Y + 0.006)),
+        (0.230, N.superellipse(0.0200, 0.0540, 4.0, 16, cy=Y + 0.002)),
+        (0.252, N.superellipse(0.0190, 0.0500, 4.0, 16, cy=Y)),
+    ], N.MAT_BODY_LIGHT, smooth=False)
+    thumbhole = N.lathe("thumbhole", [(0.0230, -0.040), (0.0230, 0.040)], N.MAT_TRIM, 14, (0.0, 0.0))
+    thumbhole.location = (0.0, Y + 0.006, 0.172)
+    thumbhole.rotation_euler = (0.0, math.radians(90), 0.0)
+    p.append(N.weld(N.boolean(butt, thumbhole)))
+    p.append(N.loft("cheek_riser", [
+        (0.122, N.superellipse(0.0166, 0.0130, 3.2, 12, cy=Y + 0.050)),
+        (0.150, N.superellipse(0.0180, 0.0150, 3.2, 12, cy=Y + 0.052)),
+        (0.216, N.superellipse(0.0180, 0.0150, 3.2, 12, cy=Y + 0.052)),
+        (0.240, N.superellipse(0.0166, 0.0130, 3.2, 12, cy=Y + 0.050)),
+    ], N.MAT_BODY_DARK, smooth=True))
+    p.append(N.loft("buttpad", [
+        (0.250, N.superellipse(0.0192, 0.0500, 4.0, 14, cy=Y)),
+        (0.264, N.superellipse(0.0196, 0.0510, 4.0, 14, cy=Y)),
+        (0.268, N.superellipse(0.0170, 0.0470, 4.0, 14, cy=Y)),
+    ], N.MAT_RUBBER, smooth=False))
 
     # Bolt handle - the read for a manual action.
     p.append(N.lathe("bolt_shaft", [(0.0056, 0.0), (0.0056, 0.048), (0.0), ][:2] + [(0.0056, 0.048)],
@@ -673,7 +700,11 @@ def build_energy_pistol() -> list:
     p.append(N.box("rear_notch", (0.0, Y + 0.042, 0.016), (0.0034, 0.0080, 0.0090), N.MAT_BODY_DARK))
     p.append(N.box("front_sight", (0.0, Y + 0.038, -0.132), (0.0044, 0.0090, 0.0060), N.MAT_TRIM))
     p.append(N.lathe("front_dot", [(0.0, -0.135), (0.0016, -0.135)], N.MAT_CYAN, 6, (0.0, Y + 0.040)))
-    p += stanag_magazine(z=-0.024, depth=0.092, width=0.0112, y_top=Y - 0.030, curve=2.0, ribs=False)
+    # On a pistol the magazine lives inside the grip, so only its baseplate and
+    # a sliver of the floorplate show. Hanging one forward of the grip the way
+    # a rifle does gives the gun two handles.
+    p.append(N.box("mag_base", (0.0, -0.098, 0.048), (0.0300, 0.0100, 0.0420), N.MAT_TRIM))
+    p.append(N.box("mag_release", (0.0148, -0.010, 0.006), (0.0090, 0.0130, 0.0130), N.MAT_TRIM))
     return p
 
 
@@ -787,8 +818,11 @@ def build_plasma_blade() -> list:
     p = []
     # Blade: sections from ricasso to tip, thinning toward the edge.
     blade = []
+    # The ricasso starts at +0.012, inside the guard, not at -0.010 in front of
+    # it: a blade that begins where the guard ends leaves a visible gap, and
+    # tangs run through the guard in any case.
     shape = [
-        (-0.010, 0.0230, 0.0038, 0.0),
+        (0.012, 0.0230, 0.0038, 0.0),
         (-0.070, 0.0248, 0.0036, 0.0),
         (-0.150, 0.0252, 0.0032, 0.0),
         (-0.230, 0.0236, 0.0026, 0.0),
@@ -817,7 +851,7 @@ def build_plasma_blade() -> list:
     # Guard and handle.
     p.append(N.box("guard", (0.0, 0.0, 0.008), (0.0560, 0.0300, 0.0140), N.MAT_TRIM))
     p.append(N.loft("handle", [
-        (0.018, N.superellipse(0.0130, 0.0176, 3.4, 14)),
+        (0.012, N.superellipse(0.0130, 0.0176, 3.4, 14)),
         (0.048, N.superellipse(0.0146, 0.0198, 3.4, 14)),
         (0.086, N.superellipse(0.0142, 0.0192, 3.4, 14)),
         (0.118, N.superellipse(0.0126, 0.0168, 3.4, 14)),
