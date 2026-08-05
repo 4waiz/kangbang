@@ -146,12 +146,16 @@ export function buildOrbitalNexus(): MapDef {
   b.catwalk(-14, -9, -14, 9, TOWER_Y, 3.2, 'grate');
   b.catwalk(14, -9, 14, 9, TOWER_Y, 3.2, 'grate');
 
-  // Glass dome overhead - pure silhouette, never collides.
+  // Open to the sky. There was a glass dome and eight ribs over the whole map
+  // here; both are gone. Even as ghost geometry a lid across the top of the
+  // frame is what stops an arena reading as outdoors, and the ribs cast the
+  // regular banding that made the old screenshots look like an interior.
+  // The ribs are kept as free-standing masts instead, so the silhouette does
+  // not go completely bare.
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    b.boxAt(Math.cos(a) * 26, 22, Math.sin(a) * 26, 1, 12, 1, 'trim', { ghost: true, ry: (a * 180) / Math.PI, noMinimap: true });
+    b.boxAt(Math.cos(a) * 26, 5, Math.sin(a) * 26, 0.8, 10, 0.8, 'trim', { ghost: true, ry: (a * 180) / Math.PI, noMinimap: true });
   }
-  b.boxAt(0, 27, 0, 54, 0.5, 54, 'glass', { ghost: true, noMinimap: true });
 
   // ----------------------------------------------------------- spawn wings
   for (const [sz, team] of [
@@ -300,22 +304,75 @@ export function buildOrbitalNexus(): MapDef {
   b.prop('prop_satellite', -34, 14, -34, 30, 2);
   b.prop('prop_satellite', 34, 14, 34, -150, 2);
 
+  // ---------------------------------------------------------- natural cover
+  // Solid brush + prop, so these stop players and bullets where they look like
+  // they should. Mirrored, and kept off the arm centrelines so the four
+  // approaches into the core deck stay clear.
+  //
+  // Constrained by the deck plan: the four inner platforms occupy x/z 6.5..15.5
+  // (mirrored), so anything in that band lands inside one. These sit on the
+  // axes between the platforms, and in the arms clear of the ring ramps
+  // (which run x +-2.5 at |z| 19.5..29.5).
+  for (const s of [-1, 1] as const) {
+    b.rockCover(s * -19, s * 2, 0, 1.0, s * 30);
+    b.rockCover(s * 2, s * -19, 0, 0.85, s * -55);
+    b.treeCover(s * -7, s * -31, 0, 1.5, s * 35);
+    b.treeCover(s * 31, s * -7, 0, 1.4, s * -25);
+    b.logCover(s * 19, s * 19, 0, 1.2, s * 45);
+  }
+
+  // ------------------------------------------------------------- landscape
+  // Everything below is decoration - props never collide. Large scenery only
+  // outside the playable bound, ankle-height scatter only inside; use the
+  // cover helpers above for anything meant to stop a bullet.
+  for (const [x, z, s, ry] of [
+    [-58, -50, 5.0, 15], [-20, -64, 4.4, -40], [22, -62, 5.4, 70],
+    [58, -44, 4.6, 120], [64, -6, 5.2, -20], [56, 38, 4.4, 85],
+    [18, 64, 5.6, 30], [-24, 62, 4.6, 150], [-60, 40, 5.0, -95],
+    [-66, 4, 4.4, 60],
+  ] as const) {
+    b.propOnGround('prop_tree_round', x, z, ry, s);
+  }
+  for (const [x, z, s, ry] of [
+    [-78, -34, 4.6, 0], [-42, -80, 4.2, 35], [40, -78, 4.8, -30],
+    [80, -28, 4.4, 95], [76, 40, 4.6, 10], [30, 80, 4.2, -55],
+    [-40, 78, 4.8, 125], [-80, 32, 4.4, -20],
+  ] as const) {
+    b.propOnGround('prop_tree_pine', x, z, ry, s);
+  }
+  for (const [x, z, s, ry] of [
+    [-70, -66, 3.4, 20], [72, -64, 3.8, -45], [68, 70, 3.2, 75], [-72, 66, 3.6, 115],
+  ] as const) {
+    b.propOnGround('prop_rock_spire', x, z, ry, s);
+  }
+  for (const [x, z, ry] of [
+    [-30, -14, 25], [28, 16, -70], [-16, 29, 110], [17, -30, 20],
+    [-33, 8, 60], [34, -9, -30], [-10, -33, 145], [11, 32, 85],
+  ] as const) {
+    b.propOnGround('prop_grass_tuft', x, z, ry, 1.3);
+  }
+  for (const [x, z, ry] of [
+    [-26, -25, 35], [25, 24, -60], [-23, 27, 100], [24, -27, 150],
+  ] as const) {
+    b.propOnGround('prop_flower_patch', x, z, ry, 1.2);
+  }
+
   return b.finish(
     { minX: -bound, maxX: bound, minZ: -bound, maxZ: bound },
     -8,
     {
       skybox: 'orbital',
-      // Clear high-altitude daylight.
-      fogColor: 0xbdd0e2,
-      fogDensity: 0.006,
-      hemiSky: 0xd8e6f4,
-      hemiGround: 0x8f979e,
-      hemiIntensity: 1.05,
-      sunColor: 0xffffff,
-      sunIntensity: 1.5,
+      // Clear morning. Green ground bounce, as on Foundry.
+      fogColor: 0xc6e6f8,
+      fogDensity: 0.0045,
+      hemiSky: 0x8fcbef,
+      hemiGround: 0x6b9a44,
+      hemiIntensity: 1.2,
+      sunColor: 0xfff8e8,
+      sunIntensity: 2.1,
       sunDir: [0.55, -0.7, 0.4],
       ambientLoop: 'amb_orbital',
-      neonBoost: 1.25,
+      neonBoost: 1,
     },
   );
 }

@@ -6,7 +6,7 @@
  * checked on upgrade so a hostile page cannot drive a session from a browser.
  */
 
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, type WebSocket } from 'ws';
 import {
@@ -43,6 +43,73 @@ export interface GameServer {
   close(): Promise<void>;
   readonly port: number;
   readonly rooms: RoomManager;
+}
+
+/** One `listen()` attempt, with both listeners detached however it ends. */
+function listenOnce(httpServer: HttpServer): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onError = (err: Error) => {
+      httpServer.removeListener('listening', onListening);
+      reject(err);
+    };
+    const onListening = () => {
+      httpServer.removeListener('error', onError);
+      resolve();
+    };
+    httpServer.once('error', onError);
+    httpServer.once('listening', onListening);
+    httpServer.listen(config.port, config.host);
+  });
+}
+
+/** True when something is already serving this game's API on the port. */
+async function portServesGame(): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${config.port}/api/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Bind the port, tolerating a predecessor that has not let go of it yet.
+ *
+ * `tsx watch` starts the replacement process the moment a file changes, which
+ * routinely overlaps the outgoing process's socket teardown. Treating that
+ * overlap as fatal kills the dev server on an ordinary save, and the client
+ * then reports a game server that is merely mid-restart as unreachable.
+ *
+ * A held port has two very different causes, so they are told apart rather than
+ * waited out uniformly: if a live server answers `/api/health` this is a real
+ * conflict and fails immediately with the command to fix it; if nothing answers
+ * it is a socket still closing, and worth a few seconds of retries.
+ *
+ * Production binds once - there, a taken port is a misconfiguration to surface
+ * straight away, not a race to sit through.
+ */
+async function listenWithRetry(httpServer: HttpServer): Promise<void> {
+  const deadline = Date.now() + (config.isProd ? 0 : 6000);
+  for (;;) {
+    try {
+      await listenOnce(httpServer);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'EADDRINUSE') throw err;
+
+      if (Date.now() >= deadline || (await portServesGame())) {
+        log.error('boot', `port ${config.port} is already in use by another game server`, {
+          hint: `Stop it first, or run with a different PORT (e.g. PORT=2568 npm run dev:server).`,
+        });
+        throw err;
+      }
+      log.warn('boot', `port ${config.port} still held by the previous process, retrying`);
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
 }
 
 export async function startServer(db: Database): Promise<GameServer> {
@@ -267,10 +334,7 @@ export async function startServer(db: Database): Promise<GameServer> {
 
   rooms.start();
 
-  await new Promise<void>((resolve, reject) => {
-    httpServer.once('error', reject);
-    httpServer.listen(config.port, config.host, () => resolve());
-  });
+  await listenWithRetry(httpServer);
 
   const address = httpServer.address();
   const port = typeof address === 'object' && address ? address.port : config.port;

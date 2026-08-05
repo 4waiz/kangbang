@@ -180,6 +180,49 @@ export function newProfile(id: string, name: string, guest: boolean, now: number
   };
 }
 
+function record<T>(v: unknown): Record<string, T> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, T>) : {};
+}
+
+function stringList(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+
+/**
+ * Force a profile read back from storage into the shape the rest of the server
+ * assumes.  Every driver runs its rows through this on the way out.
+ *
+ * This exists because a JSON column and a TypeScript interface cannot be kept
+ * in sync by the type system: a column default of `'{}'`, a row written by an
+ * older schema, or a blob truncated by hand all deserialise to something that
+ * type-checks as `PlayerProfile` and then throws on first property access.
+ * Repairing on read means such a row degrades to defaults instead of 500ing,
+ * and the next `saveProfile` writes the repaired shape back.
+ */
+export function normaliseProfile(p: PlayerProfile): PlayerProfile {
+  const cosmetics = record<unknown>(p.cosmetics);
+  p.cosmetics = {
+    unlocked: stringList(cosmetics.unlocked),
+    equipped: record<string>(cosmetics.equipped),
+  };
+  // A profile must own whatever it can equip, or the equip endpoints reject the
+  // cosmetics the menu is already showing.
+  if (p.cosmetics.unlocked.length === 0) p.cosmetics.unlocked = defaultUnlockedCosmetics();
+  if (Object.keys(p.cosmetics.equipped).length === 0) p.cosmetics.equipped = { ...DEFAULT_COSMETICS };
+
+  p.totals = { ...emptyTotals(), ...record<number>(p.totals) };
+  p.settings = record<unknown>(p.settings);
+  p.bindings = record<string>(p.bindings);
+  p.loadouts = record<unknown>(p.loadouts);
+  p.counters = record<number>(p.counters);
+  p.weaponStats = record<WeaponStatRow>(p.weaponStats);
+  p.classStats = record<ClassStatRow>(p.classStats);
+  p.challengeProgress = record<number>(p.challengeProgress);
+  p.achievements = stringList(p.achievements);
+  p.challengesClaimed = stringList(p.challengesClaimed);
+  return p;
+}
+
 /** Metric extraction shared by every driver so ordering is consistent. */
 export function metricValue(p: PlayerProfile, metric: LeaderboardMetric): number {
   const t = p.totals;

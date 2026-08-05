@@ -13,8 +13,11 @@ function resolveBase(): string {
   const explicit = import.meta.env.VITE_SERVER_URL;
   if (explicit) return String(explicit).replace(/\/$/, '');
   const { protocol, hostname, port } = window.location;
-  // The dev client runs on 5173; the server on 2567.
-  if (port === '5173' || port === '4173') return `${protocol}//${hostname}:2567`;
+  // Vite serves the client itself, so the game server is elsewhere: port 2567.
+  // Keyed off the dev/preview flag rather than a fixed port, because Vite walks
+  // to 5174, 5175... whenever 5173 is taken and the client would then silently
+  // fetch its own index.html instead of the API.
+  if (import.meta.env.DEV || port === '4173') return `${protocol}//${hostname}:2567`;
   return `${protocol}//${window.location.host}`;
 }
 
@@ -86,9 +89,38 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = 8000
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
 export const api = {
   health(): Promise<HealthInfo> {
     return request<HealthInfo>('/api/health', {}, 5000);
+  },
+
+  /**
+   * Poll `/api/health` until the server answers.
+   *
+   * `npm run dev` starts Vite and the game server side by side, and Vite always
+   * wins - it has nothing to compile, while the server transpiles, opens the
+   * database and binds a port. Whoever opens the page in those first seconds
+   * fetches into a socket nobody is listening on yet. Failing there reports a
+   * race that resolves itself a moment later as if the server were down, so
+   * boot waits it out instead.
+   *
+   * Only connection-level failures are retried: an `ApiError` means the server
+   * answered and is genuinely unhappy, which no amount of waiting will fix.
+   */
+  async awaitHealth(timeoutMs = 30_000, onWait?: (secondsWaited: number) => void): Promise<HealthInfo> {
+    const started = Date.now();
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await request<HealthInfo>('/api/health', {}, 5000);
+      } catch (err) {
+        const waited = Date.now() - started;
+        if (err instanceof ApiError || waited >= timeoutMs) throw err;
+        if (attempt > 0) onWait?.(Math.round(waited / 1000));
+        await sleep(500);
+      }
+    }
   },
 
   meta(): Promise<MetaCatalogue> {

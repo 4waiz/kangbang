@@ -218,17 +218,34 @@ export class InputManager {
   }
 
   private onWheel(ev: WheelEvent): void {
+    /*
+     * A wheel event is only a weapon switch if it actually moved vertically.
+     *
+     * `deltaY < 0 ? 1 : -1` treated deltaY === 0 as a scroll DOWN, so every
+     * zero-delta event cycled the weapon backwards - and zero-delta events are
+     * common: horizontal trackpad swipes and tilt wheels both emit them. That
+     * is a weapon changing with nothing touched, which is exactly what it
+     * looked like in game.
+     */
+    if (ev.deltaY === 0) return;
+    const code = ev.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+
     if (this.captureResolver) {
       ev.preventDefault();
       const resolver = this.captureResolver;
       this.captureResolver = null;
-      resolver(ev.deltaY < 0 ? 'WheelUp' : 'WheelDown');
+      resolver(code);
       return;
     }
     if (!this.locked) return;
     ev.preventDefault();
-    this.wheelDelta += ev.deltaY < 0 ? 1 : -1;
-    const code = ev.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+    /*
+     * The wheel is reported ONLY as a rebindable button press, not also as a
+     * raw delta. It used to be both, and `nextWeapon`/`prevWeapon` default to
+     * WheelUp/WheelDown - so a single notch cycled twice: once from the raw
+     * delta and once from the binding. Going through the binding alone also
+     * means a player who rebinds the wheel actually gets what they asked for.
+     */
     this.pressedThisFrame.add(code);
   }
 

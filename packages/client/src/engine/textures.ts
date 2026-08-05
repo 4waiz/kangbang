@@ -29,7 +29,17 @@ export type TextureQuality = 'low' | 'medium' | 'high';
  * 1.3 MB with its mip chain and a dozen were resident, which was a third of
  * the whole texture budget for detail nobody can resolve at 1080p.
  */
-const SIZES: Record<TextureQuality, number> = { low: 64, medium: 128, high: 192 };
+/*
+ * 64/128/192 was too coarse to carry surface detail: a 192px canvas stretched
+ * across a 72 m floor at the world-space UV density the map renderer uses is
+ * roughly one texel per 40 cm, so every surface read as flat colour and the
+ * detail that was there showed up as tiling rather than as texture.
+ *
+ * These are procedural canvases painted once and cached by pattern - there are
+ * seven of them in total - so the cost of quadrupling the edge length is a few
+ * megabytes of VRAM, not download size or frame time.
+ */
+const SIZES: Record<TextureQuality, number> = { low: 128, medium: 256, high: 512 };
 
 const cache = new Map<string, Texture>();
 
@@ -317,21 +327,19 @@ function paintNoise(ctx: CanvasRenderingContext2D, size: number, def: MaterialDe
     }
   }
   ctx.putImageData(img, 0, 0);
-  // Occasional crack / expansion joint.
-  ctx.strokeStyle = shade(def.color, -0.25);
-  ctx.lineWidth = Math.max(1, size / 220);
-  for (let c = 0; c < 3; c++) {
-    ctx.beginPath();
-    let x = noise2(c, 90, seed) * size;
-    let y = 0;
-    ctx.moveTo(x, y);
-    while (y < size) {
-      y += size / 12;
-      x += (noise2(c * 20 + y, 91, seed) - 0.5) * size * 0.12;
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
+  /*
+   * No cracks.
+   *
+   * This used to draw three dark meandering "expansion joints" over every
+   * `noise` surface. Textures are cached by PATTERN, not by material, so the
+   * one canvas is shared by concrete, dirt, sand, stone AND grass - and a
+   * concrete expansion joint drawn across a meadow reads as a black crack
+   * through the lawn, which is exactly how it looked in game.
+   *
+   * A stylised surface wants broad tonal variation and nothing else. The fbm
+   * above already provides it; anything drawn on top at this texel density
+   * just becomes visible tiling.
+   */
 }
 
 // ---------------------------------------------------------------------------
@@ -510,15 +518,19 @@ export function skyTexture(kind: string, quality: TextureQuality): Texture {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('2D canvas unavailable');
 
-  // Named for the three maps, but read as time of day and weather rather than
-  // as a planet.
+  // Named for the three maps, but read as time of day rather than as a place.
+  //
+  // Saturated storybook skies rather than the flat overcast greys these were.
+  // The horizon band is deliberately much warmer and lighter than the zenith:
+  // that vertical warm-to-cool run is most of what makes a stylised sky read as
+  // painted, and it is also what the hemisphere light samples for its bounce.
   const palettes: Record<string, { zenith: string; horizon: string; haze: string }> = {
-    // Overcast industrial daylight: flat white sky over a warehouse district.
-    foundry: { zenith: '#8fa6bd', horizon: '#d6dee6', haze: '#e8edf1' },
-    // Clear high-altitude afternoon.
-    orbital: { zenith: '#5b8ec4', horizon: '#c3d8ea', haze: '#dfeaf4' },
-    // Late-afternoon warm haze over a city.
-    mirage: { zenith: '#7d94b8', horizon: '#e5d3bd', haze: '#f0e3d2' },
+    // Bright midday: deep blue overhead falling to a pale warm horizon.
+    foundry: { zenith: '#3f9fe0', horizon: '#a8ddf5', haze: '#e6f4fb' },
+    // Clear morning, a touch cooler and higher contrast.
+    orbital: { zenith: '#2f8ad8', horizon: '#9ed4f2', haze: '#dcf0fb' },
+    // Golden hour, matching the low warm sun that map sets.
+    mirage: { zenith: '#4a86c8', horizon: '#f4c98a', haze: '#fbe6c8' },
   };
   const p = palettes[kind] ?? palettes.orbital;
 

@@ -1,5 +1,7 @@
 /* ==========================================================================
    Menus and overlays
+   These are the storybook half of the design system: parchment surfaces,
+   timber rules, dark ink. See base.css for why the HUD does not follow.
    ========================================================================== */
 
 .screen {
@@ -9,32 +11,36 @@
   flex-direction: column;
   background:
     radial-gradient(ellipse at 20% 0%, rgba(var(--ion-rgb), 0.1), transparent 55%),
-    radial-gradient(ellipse at 85% 100%, rgba(var(--ember-rgb), 0.06), transparent 50%),
-    linear-gradient(180deg, rgba(var(--void-rgb), 0.94), rgba(var(--void-rgb), 0.985));
+    radial-gradient(ellipse at 85% 100%, rgba(var(--ember-rgb), 0.07), transparent 50%),
+    linear-gradient(180deg, rgba(var(--plate-rgb), 0.97), rgba(var(--substrate-rgb), 0.99)) var(--substrate);
   animation: fade-in 0.2s ease both;
   overflow: hidden;
 }
 
-/* Scanline sheen, purely decorative. */
+/* Soft paper vignette, purely decorative. Replaces the old scanline sheen:
+   a CRT cue on a hand-painted page reads as the wrong genre. */
 .screen::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.014) 0 1px,
-    transparent 1px 3px
-  );
-  mix-blend-mode: screen;
+  background: radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(var(--shade-rgb), 0.16) 100%);
 }
 
 .screen--overlay {
-  background: linear-gradient(180deg, rgba(var(--void-rgb), 0.9), rgba(var(--void-rgb), 0.96));
+  background: linear-gradient(180deg, rgba(var(--plate-rgb), 0.96), rgba(var(--substrate-rgb), 0.99)) var(--substrate);
 }
 
+/* Sits over the live scene during a match.
+ *
+ * 0.97, not 0.88. The contrast ratio at 0.88 passed on paper, but a ratio only
+ * measures ink against the average behind it - it says nothing about the map
+ * still being legible THROUGH the panel. Over a bright outdoor scene that
+ * reads as a broken overlay rather than a translucent one, and the scoreboard
+ * is a full-screen modal that has no reason to be see-through. A little of the
+ * scene still shows so it does not feel like leaving the match. */
 .screen--transparent {
-  background: rgba(var(--void-rgb), 0.72);
+  background: rgba(var(--substrate-rgb), 0.97);
 }
 
 .screen__bar {
@@ -42,15 +48,15 @@
   align-items: center;
   gap: var(--gap);
   padding: var(--gap) var(--gap-l);
-  border-bottom: 1px solid var(--edge);
-  background: linear-gradient(180deg, rgba(var(--plate-rgb), 0.9), transparent);
+  border-bottom: calc(2 * var(--u)) solid var(--edge);
+  background: linear-gradient(180deg, rgba(var(--plate-rgb), 0.95), transparent);
   flex-shrink: 0;
 }
 
 .screen__title {
   font-family: var(--font-display);
   font-size: calc(22 * var(--u));
-  letter-spacing: 0.16em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -66,8 +72,8 @@
   align-items: center;
   gap: var(--gap);
   padding: var(--gap) var(--gap-l);
-  border-top: 1px solid var(--edge);
-  background: linear-gradient(0deg, rgba(var(--plate-rgb), 0.9), transparent);
+  border-top: calc(2 * var(--u)) solid var(--edge);
+  background: linear-gradient(0deg, rgba(var(--plate-rgb), 0.95), transparent);
   flex-shrink: 0;
 }
 
@@ -91,24 +97,23 @@
 
 .logo__text b {
   font-size: calc(30 * var(--u));
-  letter-spacing: 0.22em;
+  letter-spacing: 0.1em;
   font-weight: 700;
   color: var(--ink);
 }
 
 .logo__text i {
   font-size: calc(30 * var(--u));
-  letter-spacing: 0.22em;
+  letter-spacing: 0.1em;
   font-style: normal;
   font-weight: 700;
   color: var(--ion);
-  text-shadow: 0 0 calc(20 * var(--u)) rgba(var(--ion-rgb), 0.45);
 }
 
 .logo--lg .logo__text b,
 .logo--lg .logo__text i {
   font-size: calc(58 * var(--u));
-  letter-spacing: 0.26em;
+  letter-spacing: 0.12em;
 }
 
 /* -- boot ---------------------------------------------------------------- */
@@ -123,9 +128,10 @@
 
 .boot__bar {
   width: min(calc(520 * var(--u)), 70vw);
-  height: calc(4 * var(--u));
+  height: calc(8 * var(--u));
   background: var(--void);
-  border: 1px solid var(--edge);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
   overflow: hidden;
 }
 
@@ -133,15 +139,15 @@
   display: block;
   height: 100%;
   width: 0%;
+  border-radius: 999px;
   background: linear-gradient(90deg, var(--ion), var(--ion-lite));
-  box-shadow: 0 0 calc(14 * var(--u)) var(--ion);
   transition: width 0.2s ease;
 }
 
 .boot__status {
   font-family: var(--font-mono);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   color: var(--ink-faint);
   min-height: calc(16 * var(--u));
 }
@@ -195,7 +201,8 @@
 }
 
 .stat {
-  border-left: calc(2 * var(--u)) solid var(--ion);
+  border-left: calc(3 * var(--u)) solid var(--ion);
+  border-radius: var(--radius-s);
   padding-left: calc(10 * var(--u));
 }
 
@@ -208,7 +215,7 @@
 
 .stat__label {
   font-size: calc(10 * var(--u));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
   margin-top: calc(3 * var(--u));
@@ -225,18 +232,13 @@
 .card {
   position: relative;
   text-align: left;
-  background: linear-gradient(160deg, var(--plate-2), var(--plate));
-  border: 1px solid var(--edge);
+  background: linear-gradient(165deg, var(--plate-2), var(--plate)) var(--plate);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-plate);
   padding: var(--gap);
   cursor: pointer;
-  clip-path: polygon(
-    0 0,
-    calc(100% - calc(12 * var(--u))) 0,
-    100% calc(12 * var(--u)),
-    100% 100%,
-    calc(12 * var(--u)) 100%,
-    0 calc(100% - calc(12 * var(--u)))
-  );
+  overflow: hidden;
   transition:
     border-color 0.14s ease,
     transform 0.14s ease,
@@ -251,8 +253,8 @@
 .card:hover:not(:disabled),
 .card.is-selected {
   border-color: var(--ion);
-  transform: translateY(calc(-2 * var(--u)));
-  box-shadow: 0 calc(10 * var(--u)) calc(26 * var(--u)) rgba(0, 0, 0, 0.5), var(--glow-ion);
+  transform: translateY(calc(-3 * var(--u)));
+  box-shadow: var(--shadow-plate), var(--glow-ion);
 }
 
 .card.is-selected::before {
@@ -261,12 +263,12 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: calc(3 * var(--u));
+  width: calc(5 * var(--u));
   background: var(--ion);
 }
 
 .card:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -279,13 +281,13 @@
 .card__title {
   font-family: var(--font-display);
   font-size: calc(16 * var(--u));
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .card__sub {
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -315,11 +317,11 @@
   text-align: left;
   font-family: var(--font-display);
   font-size: calc(10 * var(--u));
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
   padding: calc(7 * var(--u)) calc(9 * var(--u));
-  border-bottom: 1px solid var(--edge);
+  border-bottom: calc(2 * var(--u)) solid var(--edge);
   position: sticky;
   top: 0;
   background: var(--plate);
@@ -328,15 +330,15 @@
 
 .table td {
   padding: calc(7 * var(--u)) calc(9 * var(--u));
-  border-bottom: 1px solid rgba(var(--edge-rgb), 0.5);
+  border-bottom: 1px solid rgba(var(--edge-rgb), 0.4);
 }
 
 .table tbody tr:hover {
-  background: rgba(var(--ion-rgb), 0.07);
+  background: rgba(var(--ion-rgb), 0.08);
 }
 
 .table tbody tr.is-self {
-  background: rgba(var(--ion-rgb), 0.13);
+  background: rgba(var(--ion-rgb), 0.14);
 }
 
 .table tbody tr.is-self td {
@@ -358,7 +360,7 @@
 .tabs {
   display: flex;
   gap: calc(2 * var(--u));
-  border-bottom: 1px solid var(--edge);
+  border-bottom: calc(2 * var(--u)) solid var(--edge);
   margin-bottom: var(--gap);
   flex-wrap: wrap;
 }
@@ -366,12 +368,13 @@
 .tab {
   font-family: var(--font-display);
   font-size: calc(12 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-faint);
   background: transparent;
   border: 0;
-  border-bottom: calc(2 * var(--u)) solid transparent;
+  border-bottom: calc(3 * var(--u)) solid transparent;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
   padding: calc(9 * var(--u)) calc(15 * var(--u));
   cursor: pointer;
   transition: color 0.12s ease;
@@ -416,10 +419,10 @@
   justify-content: space-between;
   font-family: var(--font-display);
   font-size: calc(13 * var(--u));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-bottom: calc(5 * var(--u));
-  border-bottom: calc(2 * var(--u)) solid currentColor;
+  border-bottom: calc(3 * var(--u)) solid currentColor;
 }
 
 .roster__row {
@@ -428,13 +431,14 @@
   gap: calc(8 * var(--u));
   align-items: center;
   padding: calc(5 * var(--u)) calc(8 * var(--u));
-  background: rgba(var(--plate-rgb), 0.6);
+  background: rgba(var(--plate-3-rgb), 0.75);
+  border-radius: var(--radius-s);
   font-size: calc(12 * var(--u));
 }
 
 .roster__row.is-self {
-  background: rgba(var(--ion-rgb), 0.13);
-  border-left: calc(2 * var(--u)) solid var(--ion);
+  background: rgba(var(--ion-rgb), 0.14);
+  border-left: calc(3 * var(--u)) solid var(--ion);
 }
 
 .roster__level {
@@ -467,9 +471,10 @@
   gap: calc(9 * var(--u));
   width: 100%;
   text-align: left;
-  background: rgba(var(--plate-rgb), 0.7);
-  border: 1px solid var(--edge);
-  border-left: calc(2 * var(--u)) solid transparent;
+  background: rgba(var(--plate-3-rgb), 0.8);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-left: calc(4 * var(--u)) solid transparent;
+  border-radius: var(--radius);
   padding: calc(8 * var(--u)) calc(10 * var(--u));
   cursor: pointer;
   color: inherit;
@@ -480,31 +485,31 @@
 }
 
 .pick:hover:not(:disabled) {
-  background: rgba(var(--plate-3-rgb), 0.9);
+  background: var(--plate-3);
   border-color: var(--edge-hot);
 }
 
 .pick.is-active {
   border-left-color: var(--ion);
-  background: rgba(var(--ion-rgb), 0.12);
+  background: rgba(var(--ion-rgb), 0.14);
 }
 
 .pick:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .pick__name {
   font-family: var(--font-display);
   font-size: calc(13 * var(--u));
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .pick__meta {
   font-size: calc(10 * var(--u));
   color: var(--ink-faint);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
 }
 
 .statbars {
@@ -521,20 +526,23 @@
 }
 
 .statbar__label {
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
 
 .statbar__track {
-  height: calc(5 * var(--u));
+  height: calc(7 * var(--u));
   background: var(--void);
-  border: 1px solid var(--edge);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .statbar__track i {
   display: block;
   height: 100%;
+  border-radius: 999px;
   background: linear-gradient(90deg, var(--ion), var(--ion-lite));
 }
 
@@ -555,8 +563,9 @@
 .swatch {
   position: relative;
   aspect-ratio: 1;
-  border: 1px solid var(--edge);
-  background: var(--plate);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--plate-3);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -572,23 +581,26 @@
 
 .swatch.is-active {
   border-color: var(--ion);
-  box-shadow: inset 0 0 0 1px var(--ion);
+  box-shadow: inset 0 0 0 calc(2 * var(--u)) var(--ion);
 }
 
 .swatch:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
+/* The chip carries an arbitrary cosmetic colour, so its outline is a fixed
+   timber rule rather than anything derived from the fill. */
 .swatch__chip {
   width: 60%;
   aspect-ratio: 1;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
 }
 
 .swatch__name {
   font-size: calc(9 * var(--u));
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-align: center;
   color: var(--ink-dim);
   text-transform: uppercase;
@@ -598,7 +610,7 @@
   position: absolute;
   top: calc(3 * var(--u));
   right: calc(3 * var(--u));
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 /* -- settings ------------------------------------------------------------ */
@@ -616,7 +628,7 @@
   gap: var(--gap-s);
   align-items: center;
   padding: calc(5 * var(--u)) 0;
-  border-bottom: 1px solid rgba(var(--edge-rgb), 0.4);
+  border-bottom: 1px solid rgba(var(--edge-rgb), 0.35);
 }
 
 .binding__key {
@@ -625,8 +637,10 @@
   min-width: calc(96 * var(--u));
   text-align: center;
   padding: calc(5 * var(--u)) calc(9 * var(--u));
-  background: var(--void);
-  border: 1px solid var(--edge);
+  background: var(--plate-3);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius-s);
+  box-shadow: 0 calc(2 * var(--u)) 0 rgba(var(--shade-rgb), 0.25);
   cursor: pointer;
   color: var(--ink);
 }
@@ -669,13 +683,12 @@
 .results__verdict {
   font-family: var(--font-display);
   font-size: calc(64 * var(--u));
-  letter-spacing: 0.22em;
+  letter-spacing: 0.06em;
   line-height: 1;
 }
 
 .results__verdict.is-win {
   color: var(--good);
-  text-shadow: 0 0 calc(40 * var(--u)) rgba(var(--good-rgb), 0.35);
 }
 
 .results__verdict.is-loss {
@@ -696,7 +709,7 @@
   justify-content: space-between;
   font-size: calc(12 * var(--u));
   padding: calc(3 * var(--u)) 0;
-  border-bottom: 1px solid rgba(var(--edge-rgb), 0.4);
+  border-bottom: 1px solid rgba(var(--edge-rgb), 0.35);
 }
 
 .xp__total {
@@ -704,12 +717,14 @@
   justify-content: space-between;
   font-family: var(--font-display);
   font-size: calc(18 * var(--u));
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   padding-top: calc(7 * var(--u));
   color: var(--ion);
 }
 
-/* -- chat ---------------------------------------------------------------- */
+/* -- chat ----------------------------------------------------------------
+   Lives over the live scene during a match, so base.css gives it the same
+   dark over-the-world palette as the HUD rather than the parchment above. */
 
 .chat {
   position: absolute;
@@ -730,7 +745,8 @@
 
 .chat__row {
   font-size: calc(12 * var(--u));
-  background: rgba(var(--void-rgb), 0.7);
+  background: rgba(var(--void-rgb), 0.85);
+  border-radius: var(--radius-s);
   padding: calc(3 * var(--u)) calc(8 * var(--u));
   align-self: flex-start;
 }
@@ -745,15 +761,16 @@
   display: flex;
   gap: calc(6 * var(--u));
   align-items: center;
-  background: rgba(var(--void-rgb), 0.92);
-  border: 1px solid var(--ion);
+  background: rgba(var(--void-rgb), 0.95);
+  border: calc(2 * var(--u)) solid var(--ion);
+  border-radius: var(--radius);
   padding: calc(5 * var(--u)) calc(9 * var(--u));
 }
 
 .chat__scope {
   font-family: var(--font-display);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   color: var(--ion);
   white-space: nowrap;
 }
@@ -763,6 +780,7 @@
   background: transparent;
   padding: 0;
   font-size: calc(13 * var(--u));
+  color: var(--ink);
 }
 
 .chat__input input:focus {
@@ -777,20 +795,23 @@
   text-align: center;
   color: var(--ink-faint);
   font-size: calc(12 * var(--u));
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
+/* Also on the over-the-world palette: a toast can appear mid-match, and a
+   parchment slab dropped on the world would read as part of the scene. */
 .toast {
   position: fixed;
   bottom: calc(24 * var(--u));
   left: 50%;
   transform: translateX(-50%);
-  background: var(--plate-2);
-  border: 1px solid var(--ion);
+  background: rgba(var(--void-rgb), 0.94);
+  border: calc(2 * var(--u)) solid var(--ion);
+  border-radius: var(--radius);
   padding: calc(9 * var(--u)) calc(18 * var(--u));
   font-family: var(--font-display);
   font-size: calc(13 * var(--u));
-  letter-spacing: 0.12em;
+  letter-spacing: 0.05em;
   z-index: 200;
   animation: slide-up 0.2s ease both;
 }

@@ -13,15 +13,19 @@
 | — of which game + UI | 179 KB raw / 57 KB gz |
 | CSS | 33 KB raw / 6.8 KB gz |
 | All 3D models | **604 KB** for 59 GLBs |
+| Draco decoder | 251 KB (WASM + wrapper), served from `public/draco/` |
 | Textures | 0 bytes downloaded — drawn to canvas at boot |
 | Audio | 0 bytes downloaded — synthesised at runtime |
 | Server bundle | 385 KB, one file |
 | Server tick cost | ~0.01 ms average per room, idle-to-light load (`/api/health` reports it live) |
 | Asset generation | 59 models in ~20 s |
 
-Total first load is roughly **850 KB** over the wire for a complete game with
-three maps, ten weapons, six classes and eight modes. There is no second download,
-no asset streaming and no CDN dependency.
+Total first load is roughly **1.1 MB** over the wire for a complete game with
+three maps, ten weapons, six classes and eight modes. There is no asset streaming
+and **no CDN dependency**: the Draco decoder is served from `public/draco/` like
+everything else. It used to be fetched from `gstatic.com`, which meant a blocked
+or unreachable CDN silently turned every model in the game into a grey box —
+every shipped GLB requires Draco to parse at all.
 
 Chunking is deliberate: Three.js and the shared simulation are stable, so a
 gameplay patch invalidates only the 57 KB game chunk in players' caches.
@@ -156,14 +160,43 @@ map load, not per frame.
 | Textures | Low | Medium | High | High |
 | Shadows | Off | Low | Medium | High |
 | Effects | Low | Medium | High | High |
-| Anti-aliasing | Off | FXAA | FXAA | MSAA 4× |
+| Anti-aliasing | Off | Off | Off | MSAA 4× |
 | Bloom | off | on | on | on |
 | Motion blur | off | off | off | on |
 | Draw distance | 120 m | 190 m | 260 m | 400 m |
 | Decal limit | 40 | 120 | 220 | 400 |
+| Map point lights | 4 | 6 | 8 | 8 |
+| Model shading | Lambert | Lambert | PBR | PBR |
 
 Resolution scale is the biggest single lever — Low renders at 49% of the pixels of
-High. Shadows are the second: Off removes the entire shadow pass.
+High. Effects quality is the second, and it is not mainly about particles: it sets
+the map's point-light budget and whether models are shaded as PBR or flattened to
+Lambert. Shadows are third; Off removes the entire shadow pass.
+
+**Effects and texture quality only take effect on the next map load.** Both are
+read when the objects are built, and re-deriving them live would mean holding
+every source material and full-resolution texture alive for the whole session.
+Anti-aliasing needs a page reload — MSAA is a WebGL context creation flag.
+
+Two ceilings are applied on top of whatever is asked for. `resolutionScale` is
+multiplied by the device pixel ratio and the product is clamped to **1.5**, so a
+200%-scaled display does not quietly render a 6× pixel buffer that is thrown away
+on the way to the screen. And the number of visible point lights is held constant
+for the life of a map — see below.
+
+### Why the light budget is so small
+
+Three.js's forward renderer does not cull lights: every visible light is evaluated
+by every fragment of every lit material. Worse, the *count* of visible lights is
+part of the shader program cache key, so changing it recompiles every lit material
+in the scene — the level's ~20 and the models' ~200 — synchronously, on the driver
+thread.
+
+Effects therefore share a fixed set of 1–3 point lights (`FxSystem.FlashLights`)
+that are created once and never hidden; an idle one sits at intensity 0 rather
+than `visible = false`, because visibility is what changes the count. Together
+with the map budget above, the visible-light count never changes after load and
+every shader program is compiled once, during the boot screen.
 
 Changing any individual setting switches the preset to **Custom** rather than
 leaving a label that contradicts the settings.

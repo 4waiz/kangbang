@@ -11,6 +11,7 @@ import { TEAM_COLORS, type MapDef, type ObjectiveState, type PickupDef } from '@
 import { assets } from '../engine/assets.js';
 import { ringTexture } from '../engine/textures.js';
 import { store } from '../state/store.js';
+import { isTintable } from './actors.js';
 
 interface PickupEntity {
   def: PickupDef;
@@ -58,7 +59,7 @@ export class WorldEntities {
           const m = child as Mesh;
           if (!m.isMesh) return;
           const mat = m.material as MeshBasicMaterial & { emissive?: Color; emissiveIntensity?: number };
-          if (mat?.emissive && (mat.emissiveIntensity ?? 0) > 0.4) mat.emissive.setHex(p.tint as number);
+          if (isTintable(mat)) mat.emissive!.setHex(p.tint as number);
         });
       }
       mesh.matrixAutoUpdate = false;
@@ -221,7 +222,7 @@ export class WorldEntities {
         const m = child as Mesh;
         if (!m.isMesh) return;
         const mat = m.material as MeshBasicMaterial & { emissive?: Color; emissiveIntensity?: number };
-        if (mat?.emissive && (mat.emissiveIntensity ?? 0) > 0.4) mat.emissive.setHex(ownerColor);
+        if (isTintable(mat)) mat.emissive!.setHex(ownerColor);
       });
       // A carried core rides on its carrier, so hide the world marker.
       if (state.kind === 'core' && state.carrier >= 0) ent.root.visible = false;
@@ -246,7 +247,7 @@ export class WorldEntities {
         const m = child as Mesh;
         if (!m.isMesh) return;
         const mat = m.material as MeshBasicMaterial & { emissive?: Color; emissiveIntensity?: number };
-        if (mat?.emissive && (mat.emissiveIntensity ?? 0) > 0.4) mat.emissive.setHex(color);
+        if (isTintable(mat)) mat.emissive!.setHex(color);
       });
       this.root.add(g);
       this.deployables.set(id, g);

@@ -147,6 +147,35 @@ MATERIAL_LIBRARY = {
     "ns_copper": ((0.540, 0.290, 0.150, 1.0), 0.95, 0.30, None, 0.0),
     # Bare/worn steel, brighter than the phosphate finish.
     "ns_steel": ((0.290, 0.295, 0.305, 1.0), 0.95, 0.22, None, 0.0),
+    # --- Stylised nature ---------------------------------------------------
+    # Saturated and almost fully rough. The hand-painted look is close to pure
+    # diffuse: a specular highlight sliding across a leaf is the single
+    # strongest photographic cue there is, so roughness stays near 1.0 and
+    # metalness at 0 on everything here.
+    #
+    # Two greens, not one. A canopy built from a single colour reads as a
+    # plastic blob; alternating the darker green on the lower and inner masses
+    # fakes self-shadowing for free, and that is what gives foliage depth at
+    # the distance players actually see it.
+    "ns_foliage": ((0.180, 0.420, 0.135, 1.0), 0.0, 0.98, None, 0.0),
+    "ns_foliage_dark": ((0.105, 0.290, 0.090, 1.0), 0.0, 0.98, None, 0.0),
+    "ns_foliage_light": ((0.290, 0.560, 0.180, 1.0), 0.0, 0.98, None, 0.0),
+    # Bark was 0.19 and went almost black on its shaded side. Real bark is dark,
+    # but this palette compresses value deliberately - nothing is allowed to
+    # bottom out - and a black trunk in the middle of a bright meadow is the
+    # single most obvious break in that rule.
+    "ns_bark": ((0.310, 0.200, 0.115, 1.0), 0.0, 0.94, None, 0.0),
+    "ns_bark_light": ((0.430, 0.295, 0.175, 1.0), 0.0, 0.92, None, 0.0),
+    # Warm grey with a lot of beige in it. Neutral grey rock reads as concrete.
+    "ns_rock": ((0.245, 0.222, 0.186, 1.0), 0.0, 0.96, None, 0.0),
+    "ns_rock_dark": ((0.150, 0.136, 0.115, 1.0), 0.0, 0.96, None, 0.0),
+    "ns_grass": ((0.245, 0.490, 0.135, 1.0), 0.0, 0.99, None, 0.0),
+    "ns_flower_red": ((0.620, 0.150, 0.150, 1.0), 0.0, 0.92, None, 0.0),
+    "ns_flower_yellow": ((0.780, 0.640, 0.140, 1.0), 0.0, 0.92, None, 0.0),
+    "ns_flower_violet": ((0.430, 0.230, 0.620, 1.0), 0.0, 0.92, None, 0.0),
+    "ns_thatch": ((0.520, 0.380, 0.150, 1.0), 0.0, 0.96, None, 0.0),
+    "ns_roof_tile": ((0.480, 0.190, 0.130, 1.0), 0.0, 0.90, None, 0.0),
+
     "ns_crate": ((0.240, 0.160, 0.078, 1.0), 0.0, 0.76, None, 0.0),
     "ns_wood": ((0.180, 0.108, 0.052, 1.0), 0.0, 0.62, None, 0.0),
     "ns_concrete": ((0.180, 0.180, 0.176, 1.0), 0.0, 0.92, None, 0.0),
@@ -183,6 +212,19 @@ MAT_RUBBER = "ns_rubber"
 MAT_BRASS = "ns_brass"
 MAT_COPPER = "ns_copper"
 MAT_STEEL = "ns_steel"
+MAT_FOLIAGE = "ns_foliage"
+MAT_FOLIAGE_DARK = "ns_foliage_dark"
+MAT_FOLIAGE_LIGHT = "ns_foliage_light"
+MAT_BARK = "ns_bark"
+MAT_BARK_LIGHT = "ns_bark_light"
+MAT_ROCK = "ns_rock"
+MAT_ROCK_DARK = "ns_rock_dark"
+MAT_GRASS = "ns_grass"
+MAT_FLOWER_RED = "ns_flower_red"
+MAT_FLOWER_YELLOW = "ns_flower_yellow"
+MAT_FLOWER_VIOLET = "ns_flower_violet"
+MAT_THATCH = "ns_thatch"
+MAT_ROOF_TILE = "ns_roof_tile"
 MAT_CRATE = "ns_crate"
 MAT_WOOD = "ns_wood"
 MAT_CONCRETE = "ns_concrete"

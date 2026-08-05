@@ -55,6 +55,32 @@ interface Sample {
 const MAX_SAMPLES = 24;
 const MAX_EXTRAPOLATE_MS = 120;
 
+/**
+ * Is this material one the generators marked as team-tintable?
+ *
+ * It has to test the emissive COLOUR, not the presence of the property. The
+ * old test was `mat.emissive && mat.emissiveIntensity > 0.5`, and both halves
+ * of that silently stopped discriminating when model materials began arriving
+ * as `MeshStandardMaterial` from the glTF rather than being rebuilt as Lambert:
+ *
+ *   `emissive` is a `Color` instance, so it is truthy even when it is black.
+ *   The Lambert path only ever assigned it when the source emission was
+ *   non-zero, which is the only reason the check used to work.
+ *
+ *   `emissiveIntensity` defaults to 1 on every glTF material, so the `> 0.5`
+ *   guard passed on all of them.
+ *
+ * Together that tinted every material on a character - skin, cloth, webbing -
+ * to a full-strength self-illuminating team colour, and bodies rendered as
+ * flat white silhouettes with no shading at all.
+ */
+export function isTintable(mat: { emissive?: Color; emissiveIntensity?: number } | null | undefined): boolean {
+  const e = mat?.emissive;
+  if (!e) return false;
+  if ((mat?.emissiveIntensity ?? 0) <= 0.01) return false;
+  return e.r > 0.01 || e.g > 0.01 || e.b > 0.01;
+}
+
 export class RemoteActor {
   readonly id: number;
   readonly root = new Group();
@@ -100,9 +126,7 @@ export class RemoteActor {
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const m of mats) {
         const mat = m as MeshBasicMaterial & { emissive?: Color; emissiveIntensity?: number; name?: string };
-        if (mat?.emissive && (mat.emissiveIntensity ?? 0) > 0.5) {
-          mat.emissive.setHex(this.teamColor);
-        }
+        if (isTintable(mat)) mat.emissive!.setHex(this.teamColor);
       }
     });
     this.root.add(model);

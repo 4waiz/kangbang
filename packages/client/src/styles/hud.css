@@ -2,7 +2,29 @@
    In-game HUD
    Anchored to the four corners with the centre left clear. Every element is
    pointer-events: none so the canvas keeps pointer lock.
+
+   The HUD deliberately does NOT follow the parchment menus. The world behind
+   it is a sunlit meadow under a blue sky, and cream text on a bright sky is
+   unreadable at any size. So it keeps the dark backing plates and light ink of
+   base.css's over-the-world scope, and only its HUE moves into the new world:
+   warm gold and leaf green instead of violet. Legibility beats consistency
+   here, every time.
    ========================================================================== */
+
+.hud {
+  /* Every text-bearing element sits on one of these plates. It is the plate,
+     not the text colour, that makes the HUD readable - against the brightest
+     sky the game can produce, --hud-plate still holds 7:1 for --ink-faint and
+     12:1 for --ink. --hud-plate-soft is for elements that are mostly icon or
+     bar and only incidentally text. */
+  --hud-plate: rgba(var(--void-rgb), 0.85);
+  --hud-plate-soft: rgba(var(--void-rgb), 0.78);
+  --hud-edge: rgba(var(--edge-rgb), 0.5);
+  /* Second line of defence for the few elements that cannot carry a plate
+     (the centre notices, the respawn screen) and for text sitting near a
+     plate's edge. */
+  text-shadow: 0 calc(1 * var(--u)) calc(3 * var(--u)) rgba(var(--void-rgb), 0.9);
+}
 
 .hud > * {
   position: absolute;
@@ -21,11 +43,18 @@
   min-width: calc(520 * var(--u));
 }
 
+/* justify-self keeps the plate shrink-wrapped to its contents: the grid cell
+   is 1fr, so without it the backing would stretch across half the screen. */
 .hud__score {
+  justify-self: end;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: calc(14 * var(--u));
+  background: var(--hud-plate);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius);
+  padding: calc(3 * var(--u)) calc(12 * var(--u));
 }
 
 .hud__team {
@@ -37,7 +66,7 @@
 .hud__team-name {
   font-family: var(--font-display);
   font-size: calc(12 * var(--u));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -45,16 +74,15 @@
   font-size: calc(30 * var(--u));
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 0 calc(14 * var(--u)) currentColor;
 }
 
 .hud__team--ion .hud__team-score,
 .hud__team--ion .hud__team-name {
-  color: var(--ion);
+  color: var(--team-ion);
 }
 .hud__team--ember .hud__team-score,
 .hud__team--ember .hud__team-name {
-  color: var(--ember);
+  color: var(--team-ember);
 }
 
 .hud__score-limit {
@@ -65,22 +93,17 @@
 
 .hud__timer {
   text-align: center;
-  background: linear-gradient(180deg, rgba(var(--substrate-rgb), 0.85), rgba(var(--substrate-rgb), 0.4));
-  border: 1px solid var(--edge);
-  padding: calc(5 * var(--u)) calc(18 * var(--u)) calc(4 * var(--u));
-  clip-path: polygon(
-    calc(10 * var(--u)) 0,
-    calc(100% - calc(10 * var(--u))) 0,
-    100% 100%,
-    0 100%
-  );
+  background: var(--hud-plate);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius);
+  padding: calc(5 * var(--u)) calc(18 * var(--u));
 }
 
 .hud__timer-value {
   font-size: calc(26 * var(--u));
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .hud__timer-value.is-urgent {
@@ -91,12 +114,13 @@
 .hud__timer-label {
   font-family: var(--font-display);
   font-size: calc(10 * var(--u));
-  letter-spacing: 0.24em;
+  letter-spacing: 0.14em;
   color: var(--ink-faint);
   margin-top: calc(2 * var(--u));
 }
 
 .hud__objectives {
+  justify-self: start;
   display: flex;
   gap: calc(8 * var(--u));
   align-items: center;
@@ -105,8 +129,9 @@
 .hud__obj {
   --obj-color: var(--ink-faint);
   min-width: calc(58 * var(--u));
-  border: 1px solid color-mix(in srgb, var(--obj-color) 55%, var(--edge));
-  background: rgba(var(--substrate-rgb), 0.72);
+  border: 1px solid color-mix(in srgb, var(--obj-color) 55%, var(--hud-edge));
+  border-radius: var(--radius-s);
+  background: var(--hud-plate);
   padding: calc(3 * var(--u)) calc(7 * var(--u));
 }
 
@@ -118,7 +143,7 @@
   display: block;
   font-family: var(--font-display);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   color: var(--obj-color);
   text-align: center;
 }
@@ -126,8 +151,10 @@
 .hud__obj-bar {
   display: block;
   height: calc(3 * var(--u));
-  background: rgba(var(--void-rgb), 0.6);
+  border-radius: 999px;
+  background: rgba(var(--void-rgb), 0.7);
   margin-top: calc(2 * var(--u));
+  overflow: hidden;
 }
 
 .hud__obj-bar i {
@@ -152,17 +179,18 @@
   display: flex;
   align-items: center;
   gap: calc(7 * var(--u));
-  background: rgba(var(--void-rgb), 0.72);
-  border-right: calc(2 * var(--u)) solid var(--edge);
+  background: var(--hud-plate);
+  border-right: calc(3 * var(--u)) solid var(--hud-edge);
+  border-radius: var(--radius-s);
   padding: calc(3 * var(--u)) calc(9 * var(--u));
   font-family: var(--font-display);
   font-size: calc(13 * var(--u));
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
 }
 
 .hud__feed-row.is-self {
   border-right-color: var(--ion);
-  background: rgba(var(--ion-deep-rgb), 0.8);
+  background: rgba(var(--ion-deep-rgb), 0.85);
 }
 
 .hud__feed-icon {
@@ -173,9 +201,10 @@
 .hud__feed-tag {
   font-family: var(--font-mono);
   font-size: calc(9 * var(--u));
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--amber);
-  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+  border-radius: var(--radius-s);
   padding: 0 calc(3 * var(--u));
 }
 
@@ -192,13 +221,17 @@
   text-align: center;
 }
 
+/* No plate here - a panel in the middle of the screen would block the fight.
+   These lean entirely on a heavy shadow instead. */
 .hud__notice-row {
   font-family: var(--font-display);
   font-size: calc(16 * var(--u));
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
-  text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(var(--void-rgb), 0.9);
+  text-shadow:
+    0 0 calc(4 * var(--u)) rgba(var(--void-rgb), 1),
+    0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(var(--void-rgb), 0.95);
 }
 
 .hud__notice-row.is-big {
@@ -222,8 +255,11 @@
   bottom: calc(-16 * var(--u));
   right: 0;
   font-size: calc(9 * var(--u));
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   color: var(--ink-faint);
+  background: var(--hud-plate);
+  border-radius: var(--radius-s);
+  padding: 0 calc(5 * var(--u));
 }
 
 /* -- bottom left: vitals + abilities ------------------------------------ */
@@ -234,12 +270,17 @@
   display: flex;
   flex-direction: column;
   gap: calc(12 * var(--u));
+  align-items: flex-start;
 }
 
 .hud__vitals {
   display: flex;
   flex-direction: column;
   gap: calc(5 * var(--u));
+  background: var(--hud-plate);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius);
+  padding: calc(7 * var(--u)) calc(11 * var(--u));
 }
 
 .hud__vital-row {
@@ -251,17 +292,17 @@
 .hud__vital-label {
   font-family: var(--font-display);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
   width: calc(20 * var(--u));
 }
 
 .hud__vital-bar {
   width: calc(220 * var(--u));
-  height: calc(11 * var(--u));
-  background: rgba(var(--void-rgb), 0.65);
-  border: 1px solid var(--edge);
-  clip-path: polygon(0 0, 100% 0, calc(100% - calc(6 * var(--u))) 100%, 0 100%);
+  height: calc(12 * var(--u));
+  background: rgba(var(--void-rgb), 0.8);
+  border: 1px solid var(--hud-edge);
+  border-radius: 999px;
   overflow: hidden;
 }
 
@@ -269,14 +310,12 @@
   display: block;
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, var(--good), color-mix(in srgb, var(--good) 50%, var(--ink)));
-  box-shadow: 0 0 calc(12 * var(--u)) rgba(var(--good-rgb), 0.6);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--good) 55%, var(--ink)), var(--good));
   transition: width 0.12s linear;
 }
 
 .hud__vital-bar--shield i {
-  background: linear-gradient(90deg, var(--ion), var(--ion-lite));
-  box-shadow: 0 0 calc(12 * var(--u)) rgba(var(--ion-rgb), 0.6);
+  background: linear-gradient(180deg, var(--ion-lite), var(--ion));
 }
 
 .hud__vital-value {
@@ -301,8 +340,9 @@
   grid-template-rows: auto auto;
   gap: calc(2 * var(--u)) calc(7 * var(--u));
   align-items: center;
-  background: rgba(var(--void-rgb), 0.6);
-  border: 1px solid var(--edge);
+  background: var(--hud-plate-soft);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius);
   padding: calc(5 * var(--u)) calc(9 * var(--u));
   min-width: calc(150 * var(--u));
 }
@@ -313,13 +353,14 @@
   height: calc(24 * var(--u));
   display: grid;
   place-items: center;
-  border: 1px solid var(--edge);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius-s);
   font-size: calc(12 * var(--u));
   color: var(--ink-dim);
 }
 
 .hud__ability.is-ready {
-  border-color: color-mix(in srgb, var(--ion) 60%, var(--edge));
+  border-color: color-mix(in srgb, var(--ion) 70%, transparent);
   box-shadow: 0 0 calc(14 * var(--u)) rgba(var(--ion-rgb), 0.25);
 }
 
@@ -331,13 +372,14 @@
 .hud__ability-name {
   font-family: var(--font-display);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   color: var(--ink-dim);
 }
 
 .hud__ability-ring {
-  height: calc(4 * var(--u));
-  background: rgba(var(--void-rgb), 0.6);
+  height: calc(5 * var(--u));
+  background: rgba(var(--void-rgb), 0.75);
+  border-radius: 999px;
   overflow: hidden;
 }
 
@@ -349,7 +391,7 @@
 }
 
 .hud__ability--ult .hud__ability-ring i {
-  background: linear-gradient(90deg, var(--ion-lite), var(--amber));
+  background: linear-gradient(90deg, var(--ion), var(--amber));
 }
 
 /* -- bottom right: weapon ----------------------------------------------- */
@@ -367,10 +409,14 @@
   display: flex;
   align-items: center;
   gap: calc(12 * var(--u));
+  background: var(--hud-plate);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius);
+  padding: calc(5 * var(--u)) calc(13 * var(--u));
 }
 
 .hud__weapon-icon {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .hud__weapon-text {
@@ -380,7 +426,7 @@
 .hud__weapon-name {
   font-family: var(--font-display);
   font-size: calc(14 * var(--u));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -417,7 +463,9 @@
   height: calc(20 * var(--u));
   display: grid;
   place-items: center;
-  border: 1px solid var(--edge);
+  border: 1px solid var(--hud-edge);
+  border-radius: var(--radius-s);
+  background: var(--hud-plate-soft);
   font-size: calc(10 * var(--u));
   color: var(--ink-faint);
 }
@@ -425,7 +473,7 @@
 .hud__slot.is-active {
   border-color: var(--ion);
   color: var(--ion);
-  background: rgba(var(--ion-rgb), 0.12);
+  background: rgba(var(--ion-deep-rgb), 0.9);
 }
 
 /* -- streak, diagnostics ------------------------------------------------- */
@@ -436,9 +484,11 @@
   transform: translateX(-50%);
   font-family: var(--font-display);
   font-size: calc(15 * var(--u));
-  letter-spacing: 0.26em;
+  letter-spacing: 0.12em;
   color: var(--amber);
-  text-shadow: 0 0 calc(16 * var(--u)) rgba(var(--amber-rgb), 0.5);
+  background: var(--hud-plate);
+  border-radius: var(--radius);
+  padding: calc(3 * var(--u)) calc(12 * var(--u));
 }
 
 .hud__diag {
@@ -446,26 +496,38 @@
   left: calc(18 * var(--u));
   font-size: calc(11 * var(--u));
   color: var(--ink-faint);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  background: var(--hud-plate);
+  border-radius: var(--radius-s);
+  padding: calc(2 * var(--u)) calc(8 * var(--u));
+}
+
+.hud__diag:empty {
+  display: none;
 }
 
 /* -- death screen -------------------------------------------------------- */
 
+/* Two layers, not one gradient from red to dark. The text sits dead centre, so
+   a gradient whose centre stop is the (fairly light) red left the whole death
+   screen unreadable over a sunlit sky. The dark wash is the base everywhere and
+   the red is only a tint on top of it. */
 .hud__respawn {
   inset: 0;
   display: grid;
   place-content: center;
   text-align: center;
   gap: calc(6 * var(--u));
-  background: radial-gradient(ellipse at center, rgba(var(--bad-deep-rgb), 0.2), rgba(var(--void-rgb), 0.8));
+  background:
+    radial-gradient(ellipse at center, rgba(var(--bad-deep-rgb), 0.55), transparent 70%),
+    rgba(var(--void-rgb), 0.88);
 }
 
 .hud__respawn-title {
   font-family: var(--font-display);
   font-size: calc(46 * var(--u));
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   color: var(--bad);
-  text-shadow: 0 0 calc(30 * var(--u)) rgba(var(--bad-rgb), 0.5);
 }
 
 .hud__respawn-by {
@@ -482,7 +544,7 @@
 .hud__respawn-hint {
   font-size: calc(11 * var(--u));
   color: var(--ink-faint);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -495,16 +557,19 @@
   transition: opacity 0.2s linear;
 }
 
+/* The scope shroud has to go near-opaque whatever the theme: it stands in for
+   the body of the optic, so --shade-rgb (which is almost black inside the
+   over-the-world scope) rather than a surface colour. */
 .hud__scope {
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0 24vh, rgba(0, 0, 0, 0.96) 24.4vh);
+  background: radial-gradient(circle at center, transparent 0 24vh, rgba(var(--shade-rgb), 0.97) 24.4vh);
 }
 
 .hud__scope::before {
   content: '';
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(var(--ion-rgb), 0.18);
+  border: 1px solid rgba(var(--ion-rgb), 0.22);
   clip-path: circle(24vh at center);
 }
 
@@ -516,7 +581,8 @@
   text-align: center;
   font-size: calc(15 * var(--u));
   color: var(--ink);
-  background: rgba(var(--void-rgb), 0.7);
+  background: var(--hud-plate);
+  border-radius: var(--radius);
   padding: calc(5 * var(--u)) calc(14 * var(--u));
 }
 

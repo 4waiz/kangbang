@@ -12,6 +12,7 @@
 import {
   COSMETICS,
   TEAM_COLORS_CSS,
+  TEAM_COLOR_VARS,
   TEAM_NAMES,
   clamp,
   getMode,
@@ -34,20 +35,23 @@ interface Notice {
 /**
  * Canvas 2D has no access to CSS custom properties, so the handful of palette
  * colours the overlay paints with are mirrored from base.css here rather than
- * scattered as literals through the draw calls.
+ * scattered as literals through the draw calls. These mirror the OVER-THE-WORLD
+ * scope, not `:root`: everything below is painted on top of the live scene.
  */
 const PAINT = {
-  /** --ion channels, for rgba() strings. */
-  ion: '168, 85, 247',
+  /** --ion channels, for rgba() strings. Warm gold; the world's ground is green. */
+  ion: '245, 185, 63',
   /** --void channels, the minimap backing. */
-  void: '9, 7, 14',
-  /** --ink, --ink-dim and the unassigned team grey. */
-  ink: '#f1eefb',
-  inkDim: '#ded6ef',
-  neutral: '#a79cba',
+  void: '20, 16, 10',
+  /** --ink, --ink-dim and the unassigned team stone. */
+  ink: '#fff9ec',
+  inkDim: '#f0e4ca',
+  neutral: '#b0a48f',
   /** Headshots stay gold and enemies stay red: those read as meaning, not theme. */
   headshot: '#ffd76b',
-  hostile: '#ff4d5e',
+  hostile: '#ff5566',
+  /** --bad channels, for the damage-direction gradient. */
+  hostileRgb: '255, 85, 102',
 } as const;
 
 export class Hud {
@@ -266,7 +270,7 @@ export class Hud {
       this.el.objectives.innerHTML = state.objectives
         .filter((o) => o.active)
         .map((o) => {
-          const color = o.owner !== 0 ? TEAM_COLORS_CSS[o.owner] : 'var(--ink-faint)';
+          const color = o.owner !== 0 ? TEAM_COLOR_VARS[o.owner] : 'var(--ink-faint)';
           const contested = o.contestedBy === 3 ? ' is-contested' : '';
           return `<div class="hud__obj${contested}" style="--obj-color:${color}">
             <span class="hud__obj-label">${o.label}</span>
@@ -289,8 +293,8 @@ export class Hud {
     for (const entry of entries) {
       const node = document.createElement('div');
       node.className = 'hud__feed-row anim-in';
-      const attackerColor = entry.attackerTeam ? TEAM_COLORS_CSS[entry.attackerTeam] : 'var(--ink)';
-      const victimColor = entry.victimTeam ? TEAM_COLORS_CSS[entry.victimTeam] : 'var(--ink)';
+      const attackerColor = entry.attackerTeam ? TEAM_COLOR_VARS[entry.attackerTeam] : 'var(--ink)';
+      const victimColor = entry.victimTeam ? TEAM_COLOR_VARS[entry.victimTeam] : 'var(--ink)';
       const isMe = entry.attacker === store.name || entry.victim === store.name;
       if (isMe) node.classList.add('is-self');
       const icon = iconMarkup(weaponIcon(entry.weapon, 22, entry.headshot ? PAINT.headshot : PAINT.inkDim));
@@ -632,8 +636,8 @@ export class Hud {
       ctx.translate(cx, cy);
       ctx.rotate(-d.angle);
       const grad = ctx.createLinearGradient(0, -radius - 34, 0, -radius);
-      grad.addColorStop(0, 'rgba(255,77,94,0)');
-      grad.addColorStop(1, 'rgba(255,77,94,0.95)');
+      grad.addColorStop(0, `rgba(${PAINT.hostileRgb}, 0)`);
+      grad.addColorStop(1, `rgba(${PAINT.hostileRgb}, 0.95)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(-34, -radius);
@@ -666,7 +670,9 @@ export class Hud {
     const ox = (size - spanX * scale) / 2;
     const oz = (size - spanZ * scale) / 2;
 
-    ctx.fillStyle = `rgba(${PAINT.void}, 0.72)`;
+    // Same opacity as the DOM HUD plates: the map is drawn straight onto the
+    // scene, so the backing is what keeps it legible over sunlit grass.
+    ctx.fillStyle = `rgba(${PAINT.void}, 0.85)`;
     ctx.fillRect(0, 0, size, size);
 
     // Draw brushes as filled rectangles, lowest first so upper floors sit on
@@ -789,11 +795,12 @@ export class Hud {
     ctx.restore();
 
     // Frame.
-    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.35)`;
+    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.45)`;
     ctx.lineWidth = 1;
     ctx.strokeRect(x0 + 0.5, y0 + 0.5, size - 1, size - 1);
-    // Corner ticks, echoing the clipped corners of the plate surfaces.
-    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.8)`;
+    // Heavier corner marks. A 1px rule alone disappears against a busy map,
+    // and the corners are what the eye uses to find the map's extent.
+    ctx.strokeStyle = `rgba(${PAINT.ion}, 0.85)`;
     ctx.lineWidth = 2;
     const tick = 12;
     for (const [sx, sy] of [
@@ -841,34 +848,46 @@ export class Hud {
 }
 
 /**
- * Top-down fill per material. These are a readability table, not a copy of the
- * 3D palette: structure is a violet-grey ramp so the map reads as one surface,
- * and only the landmarks (crates, hazards, neon, team rooms) carry a hue. Every
- * entry has to stay separable from its neighbours at ~170px square.
+ * Top-down fill per material. These take their hue from the outdoor world -
+ * meadow greens, timber browns, stone - but they are a readability table, not a
+ * copy of MATERIALS: every entry is darkened to sit on the map's dark backing,
+ * and several are pushed off their true colour purely to stay apart from a
+ * neighbour. The world has a lot of brown in it and the map does not have the
+ * area to spend on subtlety.
+ *
+ * The constraint that actually governs this table is that no two entries may
+ * look alike at ~170px square, so they are spread mainly by lightness, which
+ * survives being three pixels wide. The closest pair here is ~12 CIE76 units
+ * apart; keep any new entry at least that far from every existing one.
  */
 const MINIMAP_COLORS: Record<string, string> = {
-  floorPlate: '#211c30',
-  floorLight: '#2c2650',
-  concrete: '#3e3a4e',
-  wallLight: '#635d75',
-  wallDark: '#191624',
-  hull: '#312c44',
-  trim: '#141220',
-  grate: '#2d2a3d',
-  crate: '#4b3418',
-  crateAlt: '#1f3936',
-  hazard: '#6b5a1d',
-  neonCyan: '#1e5f6d',
-  neonMagenta: '#6d1e58',
-  neonAmber: '#6d4c1e',
-  neonLime: '#3f6d1e',
-  teamIon: '#50218a',
-  teamEmber: '#7d3521',
-  reactor: '#2a4d8c',
-  conveyor: '#161520',
-  asphalt: '#181622',
-  cityWall: '#232030',
-  sand: '#6a5c40',
+  // Ground: the meadow, two shades so lanes read against open field.
+  floorPlate: '#34521c',
+  floorLight: '#4a7a2a',
+  concrete: '#5e5e56',
+  // Structure: plaster is the lightest thing on the map, trim the darkest.
+  wallLight: '#a9a08a',
+  wallDark: '#553424',
+  hull: '#a97b45',
+  trim: '#2a1a10',
+  grate: '#8b6b45',
+  cityWall: '#8a8070',
+  // Cover and landmarks.
+  crate: '#c8912f',
+  crateAlt: '#2f7ca6',
+  hazard: '#c0a01f',
+  reactor: '#c2451a',
+  conveyor: '#3b3730',
+  asphalt: '#7d5423',
+  sand: '#b09a63',
+  // Painted signage. Historical key names; these are waymarks, not neon.
+  neonCyan: '#1a7480',
+  neonMagenta: '#8e2f57',
+  neonAmber: '#9a5a10',
+  neonLime: '#6ea31c',
+  // Team rooms, deeper than TEAM_COLORS so a player dot still shows on top.
+  teamIon: '#1b4a86',
+  teamEmber: '#8a2f1c',
 };
 
 function escapeHtml(s: string): string {

@@ -2,8 +2,8 @@
   "generated": "blender",
   "generator": "assets/scripts/gen_*.py",
   "note": "Every model here is generated from source by the Blender scripts in assets/scripts. Regenerate with: npm run assets",
-  "count": 59,
-  "totalBytes": 1481708,
+  "count": 73,
+  "totalBytes": 1613048,
   "models": {
     "char_arms_fp": {
       "file": "models/char_arms_fp.glb",
@@ -89,6 +89,14 @@
       "file": "models/prop_barrel.glb",
       "bytes": 8772
     },
+    "prop_barrel_wood": {
+      "file": "models/prop_barrel_wood.glb",
+      "bytes": 5412
+    },
+    "prop_bush": {
+      "file": "models/prop_bush.glb",
+      "bytes": 9944
+    },
     "prop_conveyor_arm": {
       "file": "models/prop_conveyor_arm.glb",
       "bytes": 10668
@@ -104,6 +112,18 @@
     "prop_crate_stack": {
       "file": "models/prop_crate_stack.glb",
       "bytes": 9416
+    },
+    "prop_fence_wood": {
+      "file": "models/prop_fence_wood.glb",
+      "bytes": 3528
+    },
+    "prop_flower_patch": {
+      "file": "models/prop_flower_patch.glb",
+      "bytes": 10380
+    },
+    "prop_grass_tuft": {
+      "file": "models/prop_grass_tuft.glb",
+      "bytes": 4016
     },
     "prop_holo_billboard": {
       "file": "models/prop_holo_billboard.glb",
@@ -121,6 +141,10 @@
       "file": "models/prop_hovercar.glb",
       "bytes": 27140
     },
+    "prop_log": {
+      "file": "models/prop_log.glb",
+      "bytes": 5740
+    },
     "prop_pipe_run": {
       "file": "models/prop_pipe_run.glb",
       "bytes": 22944
@@ -129,9 +153,25 @@
       "file": "models/prop_reactor_ring.glb",
       "bytes": 15928
     },
+    "prop_rock_cluster": {
+      "file": "models/prop_rock_cluster.glb",
+      "bytes": 10976
+    },
+    "prop_rock_large": {
+      "file": "models/prop_rock_large.glb",
+      "bytes": 11028
+    },
+    "prop_rock_spire": {
+      "file": "models/prop_rock_spire.glb",
+      "bytes": 6496
+    },
     "prop_satellite": {
       "file": "models/prop_satellite.glb",
       "bytes": 18908
+    },
+    "prop_signpost": {
+      "file": "models/prop_signpost.glb",
+      "bytes": 6756
     },
     "prop_spawn_arch": {
       "file": "models/prop_spawn_arch.glb",
@@ -152,6 +192,22 @@
     "prop_terminal": {
       "file": "models/prop_terminal.glb",
       "bytes": 9244
+    },
+    "prop_tree_palm": {
+      "file": "models/prop_tree_palm.glb",
+      "bytes": 20328
+    },
+    "prop_tree_pine": {
+      "file": "models/prop_tree_pine.glb",
+      "bytes": 6892
+    },
+    "prop_tree_round": {
+      "file": "models/prop_tree_round.glb",
+      "bytes": 20960
+    },
+    "prop_tree_stump": {
+      "file": "models/prop_tree_stump.glb",
+      "bytes": 8884
     },
     "prop_vent": {
       "file": "models/prop_vent.glb",

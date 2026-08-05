@@ -13,6 +13,7 @@ import './styles/menu.css';
 import { InputManager } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { audio } from './engine/audio.js';
+import { sessionIsRendering } from './game/session.js';
 import { App } from './ui/app.js';
 import { store } from './state/store.js';
 
@@ -92,9 +93,15 @@ async function main(): Promise<void> {
 
   // Keep the render loop alive in menus too, so the 3D scene stays live behind
   // the UI instead of freezing on the last frame.
+  //
+  // Stand down whenever a session is running, which is the actual condition -
+  // the previous test, "is the HUD hidden", was a proxy for it and a wrong one.
+  // The scoreboard and the pause menu hide the HUD without stopping the session,
+  // so both loops called `render()` and the framerate halved in exactly the two
+  // places a player looks at the frame counter.
   const idleLoop = () => {
     requestAnimationFrame(idleLoop);
-    if (!document.getElementById('hud')?.hidden) return; // session drives it
+    if (sessionIsRendering()) return;
     renderer.render();
   };
   requestAnimationFrame(idleLoop);

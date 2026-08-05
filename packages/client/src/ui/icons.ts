@@ -114,8 +114,13 @@ export function modeIcon(iconKey: string, size = 24, color = 'currentColor'): HT
   return wrap(color, square(size, 'currentColor', body));
 }
 
-/** The KANG BANG mark: a hex plate with a bolt cut through it. */
-export function logoMark(size = 64, color = '#a855f7'): string {
+/**
+ * The KANG BANG mark: a hex plate with a bolt cut through it.
+ * The default is --ion from the menu palette in base.css - the mark only ever
+ * appears on a parchment surface, so it is the deep leaf green, not the gold
+ * the HUD uses.
+ */
+export function logoMark(size = 64, color = '#36691d'): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
     <path d="M32 4 56 17v30L32 60 8 47V17z" stroke="${color}" stroke-width="2.6" fill="${color}" fill-opacity=".06"/>
     <path d="M32 10 50 20v24L32 54 14 44V20z" stroke="${color}" stroke-opacity=".35" stroke-width="1.2"/>
@@ -157,8 +162,12 @@ export function uiIcon(key: string, size = 20, color = 'currentColor'): HTMLSpan
   return wrap(color, square(size, 'currentColor', body), true);
 }
 
-/** Banner/profile-icon glyphs, drawn as abstract emblems. */
-export function glyphIcon(glyph: string, size = 32, color = '#c084fc'): HTMLSpanElement {
+/**
+ * Banner/profile-icon glyphs, drawn as abstract emblems. Callers nearly always
+ * pass the cosmetic's own colour; the default is the menu accent, since these
+ * are only ever rendered on a parchment surface.
+ */
+export function glyphIcon(glyph: string, size = 32, color = 'var(--ion)'): HTMLSpanElement {
   const bodies: Record<string, string> = {
     grid: '<path d="M3 3h18v18H3z"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',
     pulse: '<path d="M2 12h4l3-7 4 14 3-7h6"/>',

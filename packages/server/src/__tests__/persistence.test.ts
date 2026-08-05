@@ -109,6 +109,33 @@ for (const driver of drivers) {
       expect(levelFromXp(p.xp).level).toBe(1);
     });
 
+    it('reads a freshly created profile back with its cosmetics intact', async () => {
+      // ensureProfile returns a well-formed object built in memory, so the
+      // shape only fails on the *second* request, once the row makes a
+      // round-trip through storage. Read it back explicitly.
+      const created = await db.ensureProfile('guest-1', 'Runner', true);
+      const back = await db.getProfile('guest-1');
+      expect(back).not.toBeNull();
+      expect(Array.isArray(back!.cosmetics?.unlocked)).toBe(true);
+      expect(back!.cosmetics.unlocked).toEqual(created.cosmetics.unlocked);
+      expect(Object.keys(back!.cosmetics.equipped).length).toBeGreaterThan(0);
+    });
+
+    it('repairs a stored profile whose JSON blobs are missing their inner keys', async () => {
+      const p = await db.ensureProfile('guest-1', 'Runner', true);
+      // Simulates a row written by an older schema, or a column left at its
+      // '{}' default: structurally a profile, but with nothing inside.
+      p.cosmetics = {} as PlayerProfile['cosmetics'];
+      p.achievements = undefined as unknown as string[];
+      p.weaponStats = undefined as unknown as PlayerProfile['weaponStats'];
+      await db.saveProfile(p);
+
+      const back = await db.getProfile('guest-1');
+      expect(back!.cosmetics.unlocked.length).toBeGreaterThan(0);
+      expect(back!.achievements).toEqual([]);
+      expect(back!.weaponStats).toEqual({});
+    });
+
     it('returns the same profile on a second ensure, not a fresh one', async () => {
       const first = await db.ensureProfile('guest-1', 'Runner', true);
       first.xp = 5000;

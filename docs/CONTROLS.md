@@ -98,11 +98,11 @@ sensitivity means the same thing regardless of OS mouse acceleration.
 | Setting | Default | Range |
 | --- | --- | --- |
 | Performance preset | High | Low / Medium / High / Ultra / Custom |
-| Resolution scale | 1.0 | 0.5 – 1.5 |
-| Texture quality | High | Low / Medium / High |
-| Shadow quality | Medium | Off / Low / Medium / High |
-| Effects quality | High | Low / Medium / High |
-| Anti-aliasing | FXAA | Off / FXAA / MSAA 4× |
+| Resolution scale | 1.0 | 0.5 – 1.5 — multiplied by the device pixel ratio, product clamped to 1.5 |
+| Texture quality | High | Low / Medium / High — applies on the next map load |
+| Shadow quality | Low | Off / Low / Medium / High |
+| Effects quality | High | Low / Medium / High — applies on the next map load |
+| Anti-aliasing | Off | Off / MSAA 4× — applies on page reload |
 | Bloom | on | |
 | V-Sync | on | |
 | FPS limit | 300 | 30 – 300 |

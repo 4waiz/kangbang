@@ -49,6 +49,14 @@ export interface RendererStats {
 const SHADOW_SIZES: Record<string, number> = { off: 0, low: 1024, medium: 2048, high: 4096 };
 
 /**
+ * Ceiling on `resolutionScale * devicePixelRatio`.
+ *
+ * See `resize()`: without it a high-DPI display multiplies the user's own
+ * quality setting into a pixel buffer several times larger than the window.
+ */
+const MAX_EFFECTIVE_SCALE = 1.5;
+
+/**
  * How much of the procedural environment reaches a surface. See
  * `installEnvironment()`: the room is a brightly lit white box, and at full
  * strength it lifts the shadow side of every model into flat grey and cancels
@@ -92,6 +100,18 @@ export class Renderer {
     this.canvas = canvas;
     this.webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
+    /*
+     * MSAA is the only anti-aliasing mode there is, and it is decided here.
+     *
+     * There used to be an FXAA option, and it was the default, but nothing ever
+     * read it: FXAA is a post-processing pass and this renderer has no post
+     * chain, so choosing it was indistinguishable from choosing Off. The option
+     * is gone rather than implemented - a full-screen pass is the wrong thing to
+     * add to a build that is trying to get frame time down.
+     *
+     * MSAA is a context creation flag, so it is read once and a change needs a
+     * reload. `applyQuality` cannot help with this one.
+     */
     const antialias = store.str('antialiasing') === 'msaa';
     this.renderer = new WebGLRenderer({
       canvas,
@@ -178,9 +198,31 @@ export class Renderer {
 
   // -- configuration ------------------------------------------------------
 
+  /**
+   * Re-read the settings that a live renderer can act on.
+   *
+   * Which is not all of them, and the gap is worth being explicit about because
+   * the settings UI cannot tell the difference.
+   *
+   * Applied immediately, here: shadow map size and on/off, field of view, view
+   * model field of view, draw distance, the bloom exposure lift, and (via
+   * `resize`, which the settings listener calls next) render scale.
+   *
+   * NOT applied until the next map load: `effectsQuality`. It selects the map's
+   * point-light budget in `buildMapMeshes`, the effects pool sizes and shared
+   * light count in `FxSystem`, and PBR-vs-Lambert for model materials in
+   * `AssetLibrary.modelMaterial` - all of which are decided when the objects are
+   * built. Textures are the same story via `textureQuality`. Re-deriving them
+   * live would mean keeping every source material and full-resolution texture
+   * alive for the whole session purely to be able to change its mind, which
+   * costs the memory this build spent a release getting rid of.
+   *
+   * NOT applied at all without a page reload: `antialiasing`. MSAA is a WebGL
+   * context creation flag and the context is created once, in the constructor.
+   */
   applyQuality(): void {
     const shadowKey = store.str('shadowQuality');
-    const shadowSize = SHADOW_SIZES[shadowKey] ?? 2048;
+    const shadowSize = SHADOW_SIZES[shadowKey] ?? SHADOW_SIZES.low;
     this.renderer.shadowMap.enabled = shadowSize > 0;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.sun.castShadow = shadowSize > 0;
@@ -205,7 +247,18 @@ export class Renderer {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.width = Math.max(1, window.innerWidth);
     this.height = Math.max(1, window.innerHeight);
-    const scale = this.renderScale * dpr;
+    /*
+     * Effective scale is clamped, and the clamp is the point.
+     *
+     * `resolutionScale` is a multiplier on top of the device pixel ratio, and
+     * both go above 1. A 200%-scaled laptop display on the Ultra preset asked
+     * for 1.25 x 2 = 2.5, which is a 6.25x pixel buffer - the game rendering at
+     * 4800x3000 to be displayed in a 1920x1200 window. Fragment cost scales with
+     * that number directly, and nothing above roughly 1.5 survives being scaled
+     * back down to the CSS pixel grid, so the extra was paid and then thrown
+     * away. 1.5 is 2.25x the pixels, which is still plenty of supersampling.
+     */
+    const scale = Math.min(this.renderScale * dpr, MAX_EFFECTIVE_SCALE);
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(Math.round(this.width * scale), Math.round(this.height * scale), false);
     this.canvas.style.width = `${this.width}px`;

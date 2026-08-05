@@ -123,6 +123,28 @@ function setVec(v: { x: number; y: number; z: number }, x: number, y: number, z:
   v.z = z;
 }
 
+let drivingSessions = 0;
+
+/**
+ * Whether a session's frame loop is currently driving the renderer.
+ *
+ * `main.ts` keeps its own loop running so the 3D scene stays live behind the
+ * menus, and it has to stand down while a match is on or both loops call
+ * `Renderer.render()` and every frame is drawn twice, at half the framerate.
+ *
+ * It used to decide that by asking whether the HUD was hidden, which is not the
+ * same question: opening the scoreboard or the pause menu hides the HUD without
+ * stopping the session, so the two heaviest moments to be in a menu were also
+ * the two moments the scene was rendered twice.
+ *
+ * A module-level counter rather than a flag on the session, because `main.ts`
+ * has no handle on it - the App owns the session - and there is exactly one of
+ * each.
+ */
+export function sessionIsRendering(): boolean {
+  return drivingSessions > 0;
+}
+
 export class GameSession {
   // -- scene ------------------------------------------------------------
   private mapMeshes: MapMeshes | null = null;
@@ -298,6 +320,7 @@ export class GameSession {
   start(): void {
     if (this.running) return;
     this.running = true;
+    drivingSessions++;
     this.lastFrameAt = performance.now();
     this.accumulator = 0;
     const frame = () => {
@@ -309,6 +332,10 @@ export class GameSession {
   }
 
   stop(): void {
+    // Guarded, not unconditional: `stop()` is called from several paths that can
+    // overlap (leaving a match, a connection error, dispose) and the counter has
+    // to stay honest or the menu loop never restarts.
+    if (this.running) drivingSessions--;
     this.running = false;
     if (this.rafHandle) cancelAnimationFrame(this.rafHandle);
     this.rafHandle = 0;
@@ -341,6 +368,20 @@ export class GameSession {
       this.accumulator -= TICK_DT;
       steps++;
       this.simulate(TICK_DT);
+      /*
+       * Edge state belongs to one TICK, not one frame.
+       *
+       * `simulate()` reads `wasPressed(...)`, and this loop runs up to five
+       * times per frame - so below 60 fps every edge fired more than once from
+       * a single physical press. At the 36 fps these screenshots were taken at
+       * it is reliably two ticks per frame, which turned one wheel notch into
+       * two weapon switches on top of the double-count fixed above.
+       *
+       * Clearing here means the first tick of a frame sees the press and the
+       * rest do not. The `endFrame()` after the loop still covers frames that
+       * ran no ticks at all.
+       */
+      this.input.endFrame();
     }
     // If we could not keep up, drop the backlog rather than compounding it.
     if (this.accumulator > TICK_DT * 5) this.accumulator = 0;
@@ -366,8 +407,9 @@ export class GameSession {
     this.camYaw = wrapAngle(this.camYaw + look.yaw);
     this.camPitch = clamp(this.camPitch + look.pitch, -1.54, 1.54);
 
-    const wheel = this.input.consumeWheel();
-    if (wheel !== 0) this.cycleWeapon(wheel > 0 ? 1 : -1);
+    // The wheel arrives as `nextWeapon`/`prevWeapon` below, not as a raw delta.
+    // Reading both cycled the weapon twice per notch, because those two actions
+    // are bound to WheelUp/WheelDown by default.
     if (this.input.wasPressed('slot1')) this.requestSlot(0);
     if (this.input.wasPressed('slot2')) this.requestSlot(1);
     if (this.input.wasPressed('slot3')) this.requestSlot(2);

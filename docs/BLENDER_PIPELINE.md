@@ -9,11 +9,14 @@ assets/scripts/lib_kang.py       shared authoring library
 assets/scripts/gen_weapons.py    10 weapons (FP + world) + first-person arms
 assets/scripts/gen_characters.py 6 class bodies
 assets/scripts/gen_props.py      32 props, pickups, objectives, deployables
+assets/scripts/gen_nature.py     14 trees, rocks, foliage and rustic timber
+assets/scripts/preview.py        renders any of the above to PNG
+assets/scripts/test_lib_kang.py  library self-test (winding, transforms)
         │
         │  tools/build-assets.mjs  (finds Blender, runs each generator)
         ▼
 assets/source/*.blend                     inspectable .blend sources
-packages/client/public/assets/models/*.glb 59 GLB files, 0.59 MB total
+packages/client/public/assets/models/*.glb 73 GLB files, 1.54 MB total
 packages/client/public/assets/manifest.json
 ```
 
@@ -74,8 +77,14 @@ another player's eye height.
 
 ```bash
 blender --background --factory-startup --python assets/scripts/preview.py \
-    -- --out=screenshots/assets [--set=weapons|characters|props] [--only=<id>]
+    -- --out=screenshots/assets [--set=weapons|characters|props|nature] [--only=<id>]
 ```
+
+Note the three framings are not interchangeable. Weapons and nature are
+authored **+Y up** and are reoriented to Z-up before framing, exactly as the
+exporter does; characters are authored Blender-native **Z-up**. Framing a
++Y-up model with the character path renders it lying on its side, because
+`to_track_quat("-Z", "Y")` aims the camera's up axis at world +Z.
 
 Use it. Most of the mistakes this pipeline makes — a part lofted along the
 wrong axis, a bipod pointing down the barrel, gear floating beside a limb
@@ -177,11 +186,18 @@ are always close and are the most-looked-at object in the game.
 ### Draco
 
 **Draco compression is on, and the client requires it** — every shipped GLB
-declares `KHR_draco_mesh_compression` in `extensionsRequired`, and the decoder
-is fetched from the Google CDN at runtime. It shrinks these meshes by roughly
-80%, which is what makes the current triangle budget affordable over the wire.
-`export_glb` falls back silently if the encoder is unavailable in a given
-Blender build, so check the log line rather than assuming.
+declares `KHR_draco_mesh_compression` in `extensionsRequired`. It shrinks these
+meshes by roughly 80%, which is what makes the current triangle budget affordable
+over the wire. `export_glb` falls back silently if the encoder is unavailable in
+a given Blender build, so check the log line rather than assuming.
+
+Because it is *required* rather than opportunistic, the decoder ships with the
+client: `packages/client/public/draco/` holds the WebAssembly decoder and its
+JS fallback, copied from `node_modules/three/examples/jsm/libs/draco/gltf/`.
+It used to be fetched from `gstatic.com`, which made every model in the game
+contingent on a third-party CDN being reachable — when it was not, the client
+fell back to procedural grey boxes with no visible error. Re-copy those three
+files after a three.js upgrade; the decoder and the loader are version-matched.
 
 ### Face winding
 
