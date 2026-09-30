@@ -162,6 +162,85 @@ for (const driver of drivers) {
       expect(back!.guest).toBe(false);
     });
 
+    /**
+     * Regression: POST /api/guest 500ed for every returning player.
+     *
+     * A JSON blob that parses cleanly but is missing keys is indistinguishable
+     * from a complete one to `JSON.parse`, so the driver's fallback never fired
+     * and `cosmetics.unlocked` came back `undefined`. `/api/guest` reads
+     * `.unlocked.length` on the way in, so the profile could never be loaded
+     * again - the player was locked out until they cleared localStorage.
+     */
+    it('repairs a cosmetics blob that parses but is missing its keys', async () => {
+      const p = await db.ensureProfile('p1', 'Tester', true);
+      p.cosmetics = { equipped: { banner: 'banner_grid' } } as unknown as PlayerProfile['cosmetics'];
+      await db.saveProfile(p);
+
+      const back = await db.getProfile('p1');
+      expect(back!.cosmetics.unlocked).toEqual([]);
+      expect(back!.cosmetics.equipped).toEqual({ banner: 'banner_grid' });
+      // The /api/guest dereference that used to throw.
+      expect(back!.cosmetics.unlocked.length).toBe(0);
+
+      // ensureProfile takes the same read path for an existing row.
+      const again = await db.ensureProfile('p1', 'Tester', true);
+      expect(again.cosmetics.unlocked).toEqual([]);
+      expect(again.cosmetics.equipped).toEqual({ banner: 'banner_grid' });
+    });
+
+    it('reads back a complete profile shape from a freshly created row', async () => {
+      // The SQL drivers insert only the indexed columns and let the JSON columns
+      // take their `'{}'` default, so a brand-new row is the same hazard.
+      await db.ensureProfile('g_returning', 'Runner', true);
+      const back = await db.getProfile('g_returning');
+      expect(Array.isArray(back!.cosmetics.unlocked)).toBe(true);
+      expect(back!.cosmetics.equipped).toBeTruthy();
+      expect(back!.cosmetics.unlocked.length).toBeGreaterThan(0);
+    });
+
+    it('repairs every JSON blob that is the wrong shape, not just cosmetics', async () => {
+      const p = await db.ensureProfile('p1', 'Tester', true);
+      // Every blob gets a value that is valid JSON but not the declared shape.
+      const wrong = p as unknown as Record<string, unknown>;
+      wrong.settings = 'not-an-object';
+      wrong.bindings = ['not', 'an', 'object'];
+      wrong.loadouts = 42;
+      wrong.counters = null;
+      wrong.weaponStats = ['nope'];
+      wrong.classStats = 'nope';
+      wrong.achievements = { not: 'an array' };
+      wrong.challengeProgress = [1, 2, 3];
+      wrong.challengesClaimed = 'first_blood';
+      await db.saveProfile(p);
+
+      const back = await db.getProfile('p1');
+      expect(back!.settings).toEqual({});
+      expect(back!.bindings).toEqual({});
+      expect(back!.loadouts).toEqual({});
+      expect(back!.counters).toEqual({});
+      expect(back!.weaponStats).toEqual({});
+      expect(back!.classStats).toEqual({});
+      expect(back!.achievements).toEqual([]);
+      expect(back!.challengeProgress).toEqual({});
+      expect(back!.challengesClaimed).toEqual([]);
+      // The dereferences the API makes on each of them.
+      expect(new Set(back!.achievements).size).toBe(0);
+      expect(back!.challengesClaimed.includes('first_blood')).toBe(false);
+      expect(Object.entries(back!.weaponStats)).toEqual([]);
+    });
+
+    it('drops non-string entries from the string-array blobs', async () => {
+      const p = await db.ensureProfile('p1', 'Tester', true);
+      const wrong = p as unknown as Record<string, unknown>;
+      wrong.achievements = ['first_blood', 7, null, 'kills_100'];
+      p.cosmetics = { unlocked: ['skin_default', 3, {}], equipped: {} } as unknown as PlayerProfile['cosmetics'];
+      await db.saveProfile(p);
+
+      const back = await db.getProfile('p1');
+      expect(back!.achievements).toEqual(['first_blood', 'kills_100']);
+      expect(back!.cosmetics.unlocked).toEqual(['skin_default']);
+    });
+
     it('does not let one profile see another profile s data', async () => {
       const a = await db.ensureProfile('a', 'A', true);
       a.xp = 999;

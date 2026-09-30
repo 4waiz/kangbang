@@ -180,6 +180,44 @@ export function newProfile(id: string, name: string, guest: boolean, now: number
   };
 }
 
+/** A value that must be a JSON object.  Arrays and scalars are not. */
+function jsonObject<T>(raw: unknown, fallback: T): T {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as T) : fallback;
+}
+
+/** A value that must be an array of strings; anything else in it is dropped. */
+function stringArray(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string') : [];
+}
+
+/**
+ * Repair a profile on the way out of storage.
+ *
+ * The JSON columns are *typed* by each driver but nothing enforces their shape
+ * on the way in.  A column default (`'{}'`), a partial write, or a row from an
+ * older schema all parse cleanly while missing keys the rest of the server
+ * dereferences without checking: `cosmetics.unlocked.length` in the guest
+ * route, `challengesClaimed.includes` in the challenge route,
+ * `new Set(achievements)` in progression.  A `JSON.parse` fallback cannot catch
+ * that - the blob is not malformed, only incomplete - so the shape is asserted
+ * here instead, once, and every driver runs its rows through it.
+ */
+export function normaliseProfile(p: PlayerProfile): PlayerProfile {
+  const cosmetics = jsonObject<Partial<PlayerProfile['cosmetics']>>(p.cosmetics, {});
+  p.settings = jsonObject(p.settings, {});
+  p.bindings = jsonObject(p.bindings, {});
+  p.loadouts = jsonObject(p.loadouts, {});
+  p.cosmetics = { unlocked: stringArray(cosmetics.unlocked), equipped: jsonObject(cosmetics.equipped, {}) };
+  p.totals = { ...emptyTotals(), ...jsonObject<Partial<CareerTotals>>(p.totals, {}) };
+  p.counters = jsonObject(p.counters, {});
+  p.weaponStats = jsonObject(p.weaponStats, {});
+  p.classStats = jsonObject(p.classStats, {});
+  p.achievements = stringArray(p.achievements);
+  p.challengeProgress = jsonObject(p.challengeProgress, {});
+  p.challengesClaimed = stringArray(p.challengesClaimed);
+  return p;
+}
+
 /** Metric extraction shared by every driver so ordering is consistent. */
 export function metricValue(p: PlayerProfile, metric: LeaderboardMetric): number {
   const t = p.totals;

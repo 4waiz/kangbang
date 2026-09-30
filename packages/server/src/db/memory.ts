@@ -7,6 +7,7 @@ import {
   metricValue,
   meetsLeaderboardMinimum,
   newProfile,
+  normaliseProfile,
   type Database,
   type LeaderboardEntry,
   type LeaderboardMetric,
@@ -29,9 +30,14 @@ export class MemoryDatabase implements Database {
     this.matches.length = 0;
   }
 
+  /**
+   * Reads are normalised for the same reason the SQL drivers normalise theirs:
+   * a caller that saved a partially-shaped profile must not get it back, or the
+   * drivers would disagree about what a stored profile looks like.
+   */
   async getProfile(id: string): Promise<PlayerProfile | null> {
     const p = this.profiles.get(id);
-    return p ? structuredClone(p) : null;
+    return p ? normaliseProfile(structuredClone(p)) : null;
   }
 
   async ensureProfile(id: string, name: string, guest: boolean): Promise<PlayerProfile> {
@@ -43,7 +49,7 @@ export class MemoryDatabase implements Database {
       p.name = name;
     }
     p.lastSeenAt = Date.now();
-    return structuredClone(p);
+    return normaliseProfile(structuredClone(p));
   }
 
   async saveProfile(profile: PlayerProfile): Promise<void> {
@@ -52,7 +58,7 @@ export class MemoryDatabase implements Database {
 
   async findProfileByEmail(email: string): Promise<PlayerProfile | null> {
     for (const p of this.profiles.values()) {
-      if (p.email && p.email.toLowerCase() === email.toLowerCase()) return structuredClone(p);
+      if (p.email && p.email.toLowerCase() === email.toLowerCase()) return normaliseProfile(structuredClone(p));
     }
     return null;
   }
