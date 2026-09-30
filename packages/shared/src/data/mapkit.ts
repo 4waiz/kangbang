@@ -197,6 +197,136 @@ export class MapBuilder {
     this.block(cx, cz, w * 1.02, d * 1.02, y + height - 0.08, 0.08, 'trim', { ry, ghost: true });
   }
 
+  /**
+   * A structure whose COLLISION is a simple box and whose APPEARANCE is a
+   * Blender model.
+   *
+   * This is how a building stops being assembled from brushes. Brushes remain
+   * the only source of collision, bullet blocking and navmesh, so the box has
+   * to stay - but marked `noDraw` it is never rendered, and the model supplies
+   * everything the player sees. Detail then lives in a generator script where
+   * it can be bevelled, lofted and previewed, instead of in a pile of
+   * `b.block()` calls that can only ever look like boxes.
+   *
+   * Two rules:
+   *   The hull is SIMPLER than the art, and sits slightly inside it. Being
+   *   stopped by geometry you cannot see is much worse than clipping a
+   *   shoulder into an eave.
+   *   The hull is what the navmesh and the bots see, so it must still describe
+   *   the shape that matters for movement - a walkable roof needs a hull at
+   *   roof height, not just at the walls.
+   */
+  structure(
+    asset: string,
+    cx: number,
+    cz: number,
+    bottom: number,
+    w: number,
+    h: number,
+    d: number,
+    opts: { ry?: number; scale?: number; m?: string; sf?: string } = {},
+  ): void {
+    const ry = opts.ry ?? 0;
+    this.block(cx, cz, w, d, bottom, h, opts.m ?? 'hull', {
+      ry,
+      noDraw: true,
+      ...(opts.sf ? { sf: opts.sf } : {}),
+    });
+    this.prop(asset, cx, bottom, cz, ry, opts.scale ?? 1);
+  }
+
+  /**
+   * Height of the highest solid surface at (x, z), or 0 if there is none.
+   *
+   * `prop()` takes an absolute Y and does nothing clever with it, so a prop
+   * authored at y = 0 over a raised deck sinks into it, and one over a sunken
+   * plaza hangs in the air. Hand-checking every scatter position against every
+   * deck is exactly the kind of bookkeeping that rots the moment the geometry
+   * moves - so ask the geometry instead.
+   *
+   * Deliberate simplifications, all safe in the direction that matters:
+   *   - Ghost brushes are ignored. They are decoration; standing a rock on a
+   *     railing would be wrong.
+   *   - Rotated brushes are skipped. Testing a point against a yawed box needs
+   *     the inverse rotation, and the only yawed brushes underfoot are the
+   *     45-degree octagon halves of `pillar()`, which always have an
+   *     axis-aligned twin at the same height that will match anyway.
+   *   - Ramps use their full top height rather than interpolating the slope,
+   *     so a prop on a ramp sits slightly proud rather than sunk. Do not scatter
+   *     onto ramps.
+   *   - `ceiling` caps how high a surface may be and still count as ground,
+   *     so a prop under a barn roof snaps to the floor rather than the roof.
+   */
+  groundAt(x: number, z: number, ceiling = 12): number {
+    let best = 0;
+    for (const br of this.brushes) {
+      if (br.ghost || br.ry) continue;
+      const [cx, cy, cz] = br.p;
+      const [hw, hh, hd] = br.s;
+      if (x < cx - hw || x > cx + hw) continue;
+      if (z < cz - hd || z > cz + hd) continue;
+      const top = cy + hh;
+      if (top <= ceiling && top > best) best = top;
+    }
+    return best;
+  }
+
+  /**
+   * Place a prop standing on whatever surface is under it.
+   *
+   * Prefer this over `prop()` for anything that should look like it is resting
+   * on the ground. Use `prop()` directly only when the Y is deliberate - a
+   * hanging sign, a rooftop object, or scenery outside the play area.
+   */
+  propOnGround(asset: string, x: number, z: number, ryDeg = 0, scale = 1, tint?: number): void {
+    this.prop(asset, x, this.groundAt(x, z), z, ryDeg, scale, tint);
+  }
+
+  /*
+   * --- Natural cover ------------------------------------------------------
+   *
+   * `prop()` emits a GLB and nothing else: props never collide and never stop
+   * bullets. So a boulder placed with `prop()` alone is scenery that looks
+   * exactly like cover, and a player who ducks behind it and gets shot through
+   * has been lied to by the level.
+   *
+   * These three pair the visual with a real brush. Two rules they all follow:
+   *
+   *   COLLISION SITS INSIDE THE SILHOUETTE, at roughly 75-80% of the visual
+   *   radius. Erring the other way - collision wider than the mesh - stops
+   *   players on geometry they cannot see, which is far worse than being able
+   *   to clip a shoulder into some leaves.
+   *
+   *   THE COLLIDER IS ONLY THE SOLID PART. A tree's collider is its trunk; the
+   *   canopy is overhead and must not block a bullet that visibly passes under
+   *   it.
+   *
+   * `sf` overrides the footstep/impact surface, because the material key's own
+   * surface would otherwise be wrong - `hull` is timber now but still reports
+   * 'metal', and that value is wire-encoded so it cannot simply be renamed.
+   */
+
+  /** Chest-high boulder. Crouch cover you can peek over. */
+  rockCover(cx: number, cz: number, y: number, scale = 1, ry = 0): void {
+    this.pillar(cx, cz, y, 1.45 * scale, 0.95 * scale, 'concrete');
+    this.prop('prop_rock_large', cx, y, cz, ry, scale);
+  }
+
+  /** Tree with a solid trunk. Cover you strafe around rather than hide behind. */
+  treeCover(cx: number, cz: number, y: number, scale = 1, ry = 0): void {
+    // Trunk only, and only up to where the canopy starts.
+    this.pillar(cx, cz, y, 2.6 * scale, 0.26 * scale, 'hull', { sf: 'panel' });
+    this.prop('prop_tree_round', cx, y, cz, ry, scale);
+  }
+
+  /** Fallen log. Low cover: breaks a sightline when prone or sliding. */
+  logCover(cx: number, cz: number, y: number, scale = 1, ry = 0): void {
+    const len = 3.0 * scale;
+    const rad = 0.235 * scale;
+    this.block(cx, cz, len * 0.92, rad * 1.7, y, rad * 1.9, 'hull', { ry, sf: 'panel' });
+    this.prop('prop_log', cx, y, cz, ry, scale);
+  }
+
   /** Non-colliding railing so catwalk edges read visually without snagging. */
   railing(x1: number, z1: number, x2: number, z2: number, y: number, m = 'trim', height = 1.05): void {
     this.wall(x1, z1, x2, z2, y + height - 0.07, 0.07, 0.07, m, { ghost: true });

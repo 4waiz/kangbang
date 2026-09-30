@@ -60,9 +60,15 @@ export const SETTINGS_SPEC: SettingSpec[] = [
   { key: 'preset', group: 'graphics', label: 'Performance preset', control: 'preset', default: 'high', options: PRESET_OPTIONS },
   { key: 'resolutionScale', group: 'graphics', label: 'Resolution scale', control: 'slider', min: 0.5, max: 1.5, step: 0.05, default: 1, perfWeight: 5 },
   { key: 'textureQuality', group: 'graphics', label: 'Texture quality', control: 'select', default: 'high', options: QUALITY_OPTIONS, perfWeight: 2 },
-  { key: 'shadowQuality', group: 'graphics', label: 'Shadow quality', control: 'select', default: 'medium', options: [{ value: 'off', label: 'Off' }, ...QUALITY_OPTIONS], perfWeight: 4 },
-  { key: 'effectsQuality', group: 'graphics', label: 'Effects quality', control: 'select', default: 'high', options: QUALITY_OPTIONS, perfWeight: 3 },
-  { key: 'antialiasing', group: 'graphics', label: 'Anti-aliasing', control: 'select', default: 'fxaa', options: [{ value: 'off', label: 'Off' }, { value: 'fxaa', label: 'FXAA' }, { value: 'msaa', label: 'MSAA 4x' }], perfWeight: 3 },
+  // Shadows default to Low, i.e. a 1024 map. The shadow pass re-draws every
+  // caster in the level from the sun, and 2048 quadruples the fill for a
+  // difference visible only on a still screenshot of an edge. A player who
+  // wants the sharper edge can still ask for it.
+  { key: 'shadowQuality', group: 'graphics', label: 'Shadow quality', control: 'select', default: 'low', options: [{ value: 'off', label: 'Off' }, ...QUALITY_OPTIONS], perfWeight: 4 },
+  { key: 'effectsQuality', group: 'graphics', label: 'Effects quality', control: 'select', default: 'high', options: QUALITY_OPTIONS, perfWeight: 3, help: 'Point-light budget, particle counts and whether models are shaded as PBR. Takes effect on the next map load.' },
+  // No FXAA option: it needs a post-processing pass and this renderer has none,
+  // so it was a label for Off. See Renderer's constructor. MSAA needs a reload.
+  { key: 'antialiasing', group: 'graphics', label: 'Anti-aliasing', control: 'select', default: 'off', options: [{ value: 'off', label: 'Off' }, { value: 'msaa', label: 'MSAA 4x' }], perfWeight: 3, help: 'Applied when the page loads.' },
   { key: 'bloom', group: 'graphics', label: 'Bloom', control: 'toggle', default: true, perfWeight: 2 },
   { key: 'vsync', group: 'graphics', label: 'V-Sync', control: 'toggle', default: true },
   { key: 'fpsLimit', group: 'graphics', label: 'FPS limit', control: 'slider', min: 30, max: 300, step: 5, default: 300, requires: { key: 'vsync', equals: false } },
@@ -204,7 +210,7 @@ export const GRAPHICS_PRESETS: Record<string, Settings> = {
     textureQuality: 'medium',
     shadowQuality: 'low',
     effectsQuality: 'medium',
-    antialiasing: 'fxaa',
+    antialiasing: 'off',
     bloom: true,
     motionBlur: false,
     drawDistance: 190,
@@ -215,7 +221,7 @@ export const GRAPHICS_PRESETS: Record<string, Settings> = {
     textureQuality: 'high',
     shadowQuality: 'medium',
     effectsQuality: 'high',
-    antialiasing: 'fxaa',
+    antialiasing: 'off',
     bloom: true,
     motionBlur: false,
     drawDistance: 260,

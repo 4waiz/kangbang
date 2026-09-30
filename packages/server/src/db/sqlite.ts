@@ -19,6 +19,7 @@ import {
   metricValue,
   meetsLeaderboardMinimum,
   newProfile,
+  normaliseProfile,
   type Database,
   type ClassStatRow,
   type LeaderboardEntry,
@@ -168,7 +169,7 @@ export class SqliteDatabase implements Database {
   }
 
   private rowToProfile(r: Row): PlayerProfile {
-    return {
+    return normaliseProfile({
       id: String(r.id),
       name: String(r.name),
       email: r.email === null || r.email === undefined ? null : String(r.email),
@@ -205,7 +206,7 @@ export class SqliteDatabase implements Database {
       lastWinDay: r.last_win_day === null || r.last_win_day === undefined ? null : String(r.last_win_day),
       banner: String(r.banner ?? 'banner_grid'),
       icon: String(r.icon ?? 'icon_recruit'),
-    };
+    });
   }
 
   async getProfile(id: string): Promise<PlayerProfile | null> {
@@ -227,12 +228,15 @@ export class SqliteDatabase implements Database {
       return existing;
     }
     const p = newProfile(id, name, guest, Date.now());
+    // The JSON blobs are written on insert rather than left to their column
+    // defaults: `cosmetics` has required inner keys, and a row that defaults to
+    // '{}' reads back as a profile with no `unlocked` array at all.
     this.db
       .prepare(
-        `INSERT INTO players (id, name, guest, xp, created_at, last_seen_at, banner, icon)
-         VALUES (?, ?, ?, 0, ?, ?, ?, ?)`,
+        `INSERT INTO players (id, name, guest, xp, created_at, last_seen_at, banner, icon, cosmetics_json)
+         VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)`,
       )
-      .run(p.id, p.name, guest ? 1 : 0, p.createdAt, p.lastSeenAt, p.banner, p.icon);
+      .run(p.id, p.name, guest ? 1 : 0, p.createdAt, p.lastSeenAt, p.banner, p.icon, JSON.stringify(p.cosmetics));
     return p;
   }
 

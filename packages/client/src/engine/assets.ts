@@ -11,10 +11,15 @@
  * plain map at load time and strip them from the scene graph, so gameplay code
  * reads `asset.sockets.muzzle` instead of hunting the hierarchy every frame.
  *
- * Materials: models keep the metallic/roughness PBR the exporter wrote, because
- * the renderer now carries a procedural environment map for them to reflect.
- * Only on low effects quality are they flattened to Lambert. See
+ * Materials: models keep the metallic/roughness PBR the exporter wrote only on
+ * high effects quality, because the renderer carries a procedural environment
+ * map for them to reflect. Low and medium flatten them to Lambert. See
  * `modelMaterial()`.
+ *
+ * Draco: every GLB in the manifest is Draco-compressed, so the decoder is a
+ * hard requirement, not an optimisation - without it nothing loads. It is
+ * therefore served from `public/draco/` alongside the models rather than from a
+ * CDN. See the constructor.
  *
  * LODs: anything above ~500 triangles is exported with a decimated `*_LOD1`
  * sibling sharing the same origin. Both are in the GLB, so they must be pulled
@@ -66,6 +71,35 @@ export interface LoadProgress {
 }
 
 const BASE = 'assets/';
+/** Relative, like BASE: the client is served from the site root in every mode. */
+const BASE_DRACO = 'draco/';
+
+/**
+ * How long one model gets before boot gives up on it.
+ *
+ * A stalled fetch never settles. It does not reject, it does not time out, and
+ * the loader worker awaiting it never picks up another name - so `loadAll`
+ * never resolves, `App.boot()` never returns, and the boot bar sits at 35% with
+ * no error and no Retry button (that only exists on the rejection path). One
+ * unlucky asset froze the whole game.
+ *
+ * Failure was already handled gracefully: a rejected load warns once and the
+ * asset degrades to its procedural placeholder. All that was missing was making
+ * a stall look like a failure, which is what this does. The underlying request
+ * is left to finish or die on its own - GLTFLoader exposes no way to abort one,
+ * and a late arrival is harmless because nothing is waiting on it any more.
+ */
+const LOAD_TIMEOUT_MS = 10_000;
+
+export function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const expiry = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} did not respond within ${ms}ms`)), ms);
+  });
+  // Cleared off the race rather than off `work`, so the timer dies whichever
+  // side won - otherwise every successful load would hold a pending timer.
+  return Promise.race([work, expiry]).finally(() => clearTimeout(timer));
+}
 
 /**
  * The full-detail node a `*_LOD<n>` object belongs to, or null.
@@ -179,19 +213,16 @@ export function attachLods(scene: Group, lodNodes: Map<string, Object3D>): numbe
     lod.scale.copy(high.scale);
 
     // Levels sit at the LOD's own origin; the transform now lives on the LOD.
+    // Render flags are not touched here: the loader walk has already set them on
+    // every mesh in the scene, reduced copies included, and re-asserting
+    // `castShadow = true` here would override the per-asset shadow policy for
+    // exactly the assets that have an LOD - the characters and the big props.
     parent.remove(high);
     low.parent?.remove(low);
     for (const level of [high, low]) {
       level.position.set(0, 0, 0);
       level.quaternion.identity();
       level.scale.set(1, 1, 1);
-      level.traverse((n) => {
-        const mesh = n as Mesh;
-        if (!mesh.isMesh) return;
-        mesh.castShadow = true;
-        mesh.receiveShadow = false;
-        mesh.frustumCulled = true;
-      });
     }
 
     lod.addLevel(high, 0);
@@ -220,6 +251,59 @@ function frontFaceOnly(mat: Material): void {
   mat.side = FrontSide;
 }
 
+/**
+ * Radius, in metres, below which a prop's shadow is not worth drawing it twice.
+ *
+ * 0.9 falls in a real gap in the asset set. Below it is everything a player
+ * walks past: dropped weapons top out at 0.46, pickups at 0.43, grass and
+ * flowers at 0.5, a barrel at 0.62, a deployed turret at 0.83. Above it is
+ * everything that shapes a room: a terminal at 0.92, a vent at 1.11, a crate
+ * stack at 1.44, and on up to the 12 m pipe runs. Nothing sits within a few
+ * centimetres of the line, so the threshold is not delicately balanced.
+ *
+ * Measured as a bounding sphere, which is generous to long thin objects - and
+ * that is the right way round, because a pipe run or a gantry is exactly the
+ * kind of thing whose shadow describes the space underneath it.
+ */
+const SHADOW_MIN_RADIUS = 0.9;
+
+/**
+ * Decide, once per asset, whether its meshes cast into the shadow map.
+ *
+ * Everything used to. That is the three.js default rather than a decision, and
+ * it is an expensive one: the shadow pass re-draws every caster from the sun's
+ * point of view, so the flag doubles the draw calls and the vertex work for each
+ * model it is set on. Across the whole manifest - most of it props scattered
+ * several times per map - that is the second-largest fixed cost in a frame after
+ * the lights, and most of it buys a smudge the player never resolves.
+ *
+ * Characters always cast whatever their size: a silhouette thrown around a
+ * corner is information this game is meant to give away. Everything else has to
+ * earn it by being big enough for its shadow to describe the space it stands
+ * in. Pickups, deployables, held and dropped weapons and small scatter do not.
+ */
+export function applyShadowPolicy(name: string, scene: Group): void {
+  // Set either way rather than only on the true branch, so the answer does not
+  // depend on what the flags happened to be when the model arrived.
+  const cast = castsShadow(name, scene);
+  scene.traverse((child) => {
+    const mesh = child as Mesh;
+    if (mesh.isMesh) mesh.castShadow = cast;
+  });
+}
+
+function castsShadow(name: string, scene: Group): boolean {
+  // The first-person arms are the one character that renders from `viewScene`,
+  // which has its own light rig and no shadow map at all, so a caster flag there
+  // is pure overhead. The weapon held in them is a `wpn_*` model and falls out of
+  // the size test below anyway, as does its `wpn_*_world` third-person twin.
+  if (name === 'char_arms_fp') return false;
+  if (name.startsWith('char_')) return true;
+  boundsScratch.setFromObject(scene);
+  if (boundsScratch.isEmpty()) return false;
+  return boundsScratch.getBoundingSphere(sphereScratch).radius >= SHADOW_MIN_RADIUS;
+}
+
 export class AssetLibrary {
   private loader = new GLTFLoader();
   private assets = new Map<string, LoadedAsset>();
@@ -229,22 +313,39 @@ export class AssetLibrary {
   private warned = new Set<string>();
 
   constructor() {
-    // Draco is optional: the generator only uses it when Blender was built with
-    // the encoder. Wiring the decoder unconditionally is harmless.
+    /*
+     * Draco decoder, served from our own origin.
+     *
+     * Every GLB the generators produce is Draco-compressed, so this is not an
+     * optional nicety: with no decoder the loader rejects every model in the
+     * manifest and the whole game becomes crates. Fetching it from a public CDN
+     * made that outcome depend on a third party being reachable - a blocked
+     * host, an offline LAN party or a corporate proxy did it without a single
+     * visible error. The decoder now ships in `public/draco/`, so if the page
+     * loaded, the decoder loads.
+     *
+     * No `setDecoderConfig({ type: 'js' })`: that forced the pure-JS decoder,
+     * which is several times slower to decompress than the WebAssembly build
+     * and is the reason boot spent so long parsing. Left unset, DRACOLoader
+     * picks WASM and falls back to the JS decoder by itself on a runtime that
+     * has no WebAssembly - both files are in `public/draco/`.
+     */
     try {
       const draco = new DRACOLoader();
-      draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-      draco.setDecoderConfig({ type: 'js' });
+      draco.setDecoderPath(BASE_DRACO);
       this.loader.setDRACOLoader(draco);
     } catch {
-      /* Draco unavailable; uncompressed GLBs still load. */
+      /* Constructing the loader failed; every model will use its placeholder. */
     }
   }
 
   /** Load the manifest and every model it lists. */
   async loadAll(onProgress?: (p: LoadProgress) => void): Promise<void> {
     try {
-      const res = await fetch(`${BASE}manifest.json`, { cache: 'no-cache' });
+      // Same timeout as a model, for the same reason: a hung manifest fetch
+      // stalls boot at 35% just as thoroughly, and losing it only costs the
+      // real models - the procedural fallback covers everything.
+      const res = await withTimeout(fetch(`${BASE}manifest.json`, { cache: 'no-cache' }), LOAD_TIMEOUT_MS, 'manifest.json');
       if (res.ok) this.manifest = (await res.json()) as AssetManifest;
     } catch {
       this.manifest = null;
@@ -292,7 +393,7 @@ export class AssetLibrary {
     const entry = this.manifest?.models[name];
     if (!entry) return;
     try {
-      const gltf = await this.loader.loadAsync(`${BASE}${entry.file}`);
+      const gltf = await withTimeout(this.loader.loadAsync(`${BASE}${entry.file}`), LOAD_TIMEOUT_MS, entry.file);
       const scene = gltf.scene as Group;
       const sockets: Record<string, Vector3> = {};
       const doomed: Object3D[] = [];
@@ -311,7 +412,10 @@ export class AssetLibrary {
         }
         const mesh = child as Mesh;
         if (!mesh.isMesh) return;
-        mesh.castShadow = true;
+        // castShadow is decided per asset, once, after this walk - see
+        // `applyShadowPolicy`. It needs the whole model's bounds, which are not
+        // known until the sockets have been stripped out of them.
+        mesh.castShadow = false;
         mesh.receiveShadow = false;
         mesh.frustumCulled = true;
         // Reduced copies are not counted in `triangles`, which reports what a
@@ -326,6 +430,7 @@ export class AssetLibrary {
         else if (mat) mesh.material = this.modelMaterial(mat);
       });
       for (const d of doomed) d.parent?.remove(d);
+      applyShadowPolicy(name, scene);
       const lodLevels = attachLods(scene, lods.nodes);
 
       this.assets.set(name, {
@@ -398,24 +503,31 @@ export class AssetLibrary {
    * Prepare a material that arrived inside a GLB.
    *
    * Blender's glTF exporter always writes metallic/roughness PBR, so every model
-   * arrives as a MeshStandardMaterial. Those are now kept as PBR: the renderer
-   * carries a procedural environment map (see `Renderer.installEnvironment`), so
-   * metalness and roughness finally have something to reflect and a barrel reads
-   * as metal instead of as painted plastic. Normal and AO maps ride along for
-   * free, which is what makes a detailed weapon model worth authoring at all.
+   * arrives as a MeshStandardMaterial. On high effects quality those are kept:
+   * the renderer carries a procedural environment map (see
+   * `Renderer.installEnvironment`), so metalness and roughness have something to
+   * reflect and a barrel reads as metal instead of as painted plastic. Normal
+   * and AO maps ride along for free, which is what makes a detailed weapon model
+   * worth authoring at all.
    *
-   * Low effects quality still takes the Lambert path. A full specular BRDF plus
-   * an image-based lighting lookup per fragment is exactly what a weak GPU
-   * cannot afford, and flattening also collapses the shader permutations the
-   * level and the models would otherwise compile separately.
+   * Low *and* medium take the Lambert path. A full specular BRDF plus an
+   * image-based lighting lookup, evaluated per fragment against every visible
+   * light, is the single most expensive thing on the ~200 materials a map's
+   * worth of models carries - and it is the half of the frame that a player who
+   * has reached for the quality slider is trying to give up. Medium used to get
+   * the same shader as high and so the slider did almost nothing between them,
+   * which is exactly the complaint. Flattening also collapses the shader
+   * permutations that the level's Lambert brushes and the models would otherwise
+   * compile separately.
    *
    * The setting is read per material as the model loads. Models are loaded once
    * at boot, so a change mid-session takes effect on the next reload; the
    * alternative is holding every source material alive for the whole session to
-   * re-derive from.
+   * re-derive from. `Renderer.applyQuality` says the same thing from the other
+   * side.
    */
   private modelMaterial(src: MeshStandardMaterial): Material {
-    return store.str('effectsQuality') === 'low' ? this.toLambert(src) : this.toStandard(src);
+    return store.str('effectsQuality') === 'high' ? this.toStandard(src) : this.toLambert(src);
   }
 
   /**

@@ -48,6 +48,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  // A port conflict has already been reported with something actionable; a
+  // second copy of the listen stack only buries it.
+  if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') process.exit(1);
   log.error('boot', 'failed to start', { error: String(err), stack: (err as Error).stack });
   process.exit(1);
 });

@@ -7,6 +7,7 @@ import {
   metricValue,
   meetsLeaderboardMinimum,
   newProfile,
+  normaliseProfile,
   type Database,
   type LeaderboardEntry,
   type LeaderboardMetric,
@@ -31,7 +32,9 @@ export class MemoryDatabase implements Database {
 
   async getProfile(id: string): Promise<PlayerProfile | null> {
     const p = this.profiles.get(id);
-    return p ? structuredClone(p) : null;
+    // Normalised on read like the SQL drivers, so all three honour the same
+    // contract and tests written against one hold for the others.
+    return p ? normaliseProfile(structuredClone(p)) : null;
   }
 
   async ensureProfile(id: string, name: string, guest: boolean): Promise<PlayerProfile> {

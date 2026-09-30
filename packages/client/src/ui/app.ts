@@ -16,7 +16,7 @@ import {
   MODES,
   MODE_ORDER,
   PERKS,
-  TEAM_COLORS_CSS,
+  TEAM_COLOR_VARS,
   TEAM_NAMES,
   WEAPONS,
   WEAPON_ORDER,
@@ -185,7 +185,7 @@ export class App {
     try {
       status('CONTACTING SERVER');
       progress(0.05);
-      const health = await api.health();
+      const health = await api.awaitHealth(30_000, (secs) => status(`WAITING FOR GAME SERVER - ${secs}s`));
       status(`SERVER ONLINE - ${health.rooms} ROOM(S), ${health.players} PLAYER(S)`);
       progress(0.15);
 
@@ -823,7 +823,7 @@ export class App {
             this.applyLoadoutToServer();
           },
         },
-        classIcon(id, 26, locked ? '#7d6f97' : '#c084fc'),
+        classIcon(id, 26, locked ? 'var(--ink-faint)' : 'var(--ion)'),
         el(
           'span',
           { class: 'grow' },
@@ -831,7 +831,7 @@ export class App {
           el('br'),
           el('span', { class: 'pick__meta' }, locked ? `LOCKED · LV ${cls.unlockLevel}` : cls.role.toUpperCase()),
         ),
-        locked ? uiIcon('lock', 16, '#7d6f97') : null,
+        locked ? uiIcon('lock', 16, 'var(--ink-faint)') : null,
       );
       list.appendChild(btn);
     }
@@ -995,7 +995,7 @@ export class App {
                 style: { background: `#${(skin.accent ?? skin.color ?? 0x666666).toString(16).padStart(6, '0')}` },
               }),
               el('span', { class: 'swatch__name' }, skin.name),
-              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#7d6f97')) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, 'var(--ink-faint)')) : null,
             );
           }),
         ),
@@ -1025,7 +1025,7 @@ export class App {
               renderWeaponDetail(w);
             },
           },
-          weaponIcon(w.id, 36, locked ? '#7d6f97' : '#ded6ef'),
+          weaponIcon(w.id, 36, locked ? 'var(--ink-faint)' : 'var(--ink-dim)'),
           el(
             'span',
             { class: 'grow' },
@@ -1033,7 +1033,7 @@ export class App {
             el('br'),
             el('span', { class: 'pick__meta' }, locked ? `LV ${w.unlockLevel}` : `${w.damage} DMG · ${w.rpm} RPM`),
           ),
-          locked ? uiIcon('lock', 16, '#7d6f97') : null,
+          locked ? uiIcon('lock', 16, 'var(--ink-faint)') : null,
         );
         weaponList.appendChild(btn);
       }
@@ -1131,7 +1131,7 @@ export class App {
                 ? glyphIcon(c.glyph, 26, swatchColor)
                 : el('span', { class: 'swatch__chip', style: { background: swatchColor } }),
               el('span', { class: 'swatch__name' }, c.name),
-              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, '#7d6f97')) : null,
+              !unlocked ? el('span', { class: 'swatch__lock' }, uiIcon('lock', 12, 'var(--ink-faint)')) : null,
             );
           }),
         ),
@@ -1968,7 +1968,7 @@ export class App {
         { class: 'roster__col' },
         el(
           'div',
-          { class: 'roster__head', style: { color: team ? TEAM_COLORS_CSS[team] : 'var(--ink-dim)' } },
+          { class: 'roster__head', style: { color: TEAM_COLOR_VARS[team] } },
           el('span', {}, label),
           el('span', { class: 'mono' }, String(players.length)),
         ),
@@ -1979,7 +1979,7 @@ export class App {
             el(
               'div',
               { class: `roster__row${p.name === store.name ? ' is-self' : ''}` },
-              classIcon(p.classId, 18, team ? TEAM_COLORS_CSS[team] : '#a79cba'),
+              classIcon(p.classId, 18, TEAM_COLOR_VARS[team]),
               el('span', {}, p.name, p.bot ? el('span', { class: 'faint' }, ' · BOT') : null),
               el('span', { class: 'roster__level' }, `LV ${p.accountLevel}`),
               p.ready ? chip('READY', 'chip--good') : chip('...'),
@@ -2138,7 +2138,7 @@ export class App {
         {},
         el(
           'div',
-          { class: 'roster__head', style: { color: team ? TEAM_COLORS_CSS[team] : 'var(--ink-dim)' } },
+          { class: 'roster__head', style: { color: TEAM_COLOR_VARS[team] } },
           el('span', {}, label),
           el('span', { class: 'mono' }, teams === 2 ? String(this.matchState?.teamScores[team - 1] ?? 0) : ''),
         ),
@@ -2298,9 +2298,9 @@ export class App {
               ? el(
                   'div',
                   { class: 'row', style: { justifyContent: 'center', gap: '20px', marginTop: '10px' } },
-                  el('span', { style: { color: TEAM_COLORS_CSS[1], fontSize: '28px' }, class: 'mono' }, String(r.teamScores[0])),
+                  el('span', { style: { color: TEAM_COLOR_VARS[1], fontSize: '28px' }, class: 'mono' }, String(r.teamScores[0])),
                   el('span', { class: 'faint' }, 'vs'),
-                  el('span', { style: { color: TEAM_COLORS_CSS[2], fontSize: '28px' }, class: 'mono' }, String(r.teamScores[1])),
+                  el('span', { style: { color: TEAM_COLOR_VARS[2], fontSize: '28px' }, class: 'mono' }, String(r.teamScores[1])),
                 )
               : null,
           ),
@@ -2459,7 +2459,7 @@ export class App {
           { class: 'chat__row' },
           el(
             'span',
-            { class: 'chat__from', style: { color: entry.team ? TEAM_COLORS_CSS[entry.team] : 'var(--ink)' } },
+            { class: 'chat__from', style: { color: entry.team ? TEAM_COLOR_VARS[entry.team] : 'var(--ink)' } },
             entry.teamOnly ? '[TEAM] ' : '',
             entry.from,
             ': ',

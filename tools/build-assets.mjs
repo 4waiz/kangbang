@@ -37,6 +37,8 @@ const GENERATORS = {
   weapons: 'gen_weapons.py',
   characters: 'gen_characters.py',
   props: 'gen_props.py',
+  structures: 'gen_structures.py',
+  nature: 'gen_nature.py',
 };
 
 const args = process.argv.slice(2);

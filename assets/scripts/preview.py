@@ -159,6 +159,45 @@ def preview_character(build, name: str, out_dir: str) -> None:
     _render(os.path.join(out_dir, f"{name}.png"), 760, 1120)
 
 
+def preview_nature(build, name: str, out_dir: str) -> None:
+    """
+    Frame a ground-standing asset authored +Y up.
+
+    Nature follows the prop convention - +Y up, ground contact at y = 0 - so
+    the exporter's `reorient("yup")` is applied first, exactly as `finish()`
+    will. That is not cosmetic: `to_track_quat("-Z", "Y")` aims the camera's up
+    axis at world +Z, so framing a +Y-up model directly renders it lying on its
+    side. Reorienting to Z-up first is what `preview_weapon` already does, and
+    it also means the preview shows the orientation the GLB will actually have.
+    """
+    import gen_nature
+
+    N.reset_scene()
+    obj = N.join("preview", build())
+    N.weld(obj)
+    # Same threshold the generator will use, or stone previews smooth.
+    N.smooth_by_angle(obj, gen_nature.smooth_angle_for(name))
+    N.reorient("yup")
+    _clear_lights_and_camera()
+
+    lo, hi = _bounds(obj)
+    height = max(hi.z - lo.z, 0.2)
+    reach = max(height, hi.x - lo.x, hi.y - lo.y)
+    center = mathutils.Vector((0.0, 0.0, lo.z + height * 0.5))
+    _studio(center, reach / 2.0, key=0.9)
+
+    data = bpy.data.cameras.new("cam")
+    data.lens = 50
+    cam = bpy.data.objects.new("cam", data)
+    bpy.context.scene.collection.objects.link(cam)
+    bpy.context.scene.camera = cam
+    # A three-quarter view from a little above standing eye height.
+    cam.location = center + mathutils.Vector((0.85, -1.0, 0.22)).normalized() * reach * 2.2
+    cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
+
+    _render(os.path.join(out_dir, f"{name}.png"), 700, 900)
+
+
 def main() -> None:
     out_dir = N.only_arg("out") or os.path.join(N.REPO_ROOT, "screenshots", "assets")
     os.makedirs(out_dir, exist_ok=True)
@@ -188,6 +227,14 @@ def main() -> None:
             if only and only != pid:
                 continue
             preview_weapon(build, f"prop_{pid}", out_dir)
+
+    if which in ("all", "nature"):
+        import gen_nature
+
+        for nid, build in gen_nature.NATURE.items():
+            if only and only != nid:
+                continue
+            preview_nature(build, nid, out_dir)
 
 
 if __name__ == "__main__":

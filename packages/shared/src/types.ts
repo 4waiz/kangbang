@@ -11,8 +11,8 @@ import type { Vec3 } from './math.js';
 
 export const Team = {
   None: 0,
-  Ion: 1, // violet / purple
-  Ember: 2, // orange / ember
+  Ion: 1, // blue
+  Ember: 2, // terracotta / red-orange
 } as const;
 export type TeamId = (typeof Team)[keyof typeof Team];
 
@@ -23,21 +23,43 @@ export const TEAM_NAMES: Record<number, string> = {
 };
 
 /**
- * Team hues, mirrored from the client design system: unassigned is --ink-dim,
- * ION is --ion and EMBER is --ember. The renderer needs ints and the HUD needs
- * CSS strings, and neither can read a stylesheet variable, so both forms are
- * restated here. Keep them in step with packages/client/src/styles/base.css.
+ * Team hues for everything painted rather than laid out: the 3D renderer needs
+ * ints and the canvas minimap needs CSS strings, and neither can read a
+ * stylesheet variable, so both forms are restated here.
+ *
+ * Blue and terracotta, matching the `teamIon` / `teamEmber` materials in
+ * sim/world.ts exactly so a banner in the world and a dot on the minimap are
+ * the same colour. The ground is grass now, so neither team may be green; the
+ * pair sits far apart in hue at nearly equal relative luminance (0.202 vs
+ * 0.215) so neither side reads as the louder one.
+ *
+ * DOM text uses TEAM_COLOR_VARS below instead - these values are tuned for
+ * dark backdrops and would not carry on the parchment menus.
  */
 export const TEAM_COLORS: Record<number, number> = {
-  0: 0xa79cba,
-  1: 0xa855f7,
-  2: 0xff5a3c,
+  0: 0xb0a48f,
+  1: 0x3d7fc4,
+  2: 0xd35a3a,
 };
 
 export const TEAM_COLORS_CSS: Record<number, string> = {
-  0: '#a79cba',
-  1: '#a855f7',
-  2: '#ff5a3c',
+  0: '#b0a48f',
+  1: '#3d7fc4',
+  2: '#d35a3a',
+};
+
+/**
+ * The same three hues as CSS custom properties, for team-coloured text in the
+ * DOM. A single hex cannot clear 4.5:1 on both the parchment menus and the
+ * dark HUD plates - the two backgrounds are at opposite ends of the ramp - so
+ * base.css defines a deep tint for the menus and a bright one inside the
+ * over-the-world scope, and this indirection picks whichever applies.
+ * Defined in packages/client/src/styles/base.css; keep the names in step.
+ */
+export const TEAM_COLOR_VARS: Record<number, string> = {
+  0: 'var(--ink-dim)',
+  1: 'var(--team-ion)',
+  2: 'var(--team-ember)',
 };
 
 // ---------------------------------------------------------------------------

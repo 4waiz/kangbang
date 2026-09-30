@@ -170,8 +170,12 @@ export function buildMirageDistrict(): MapDef {
     }
   }
   for (const s of [-1, 1] as const) {
-    b.wall(-HALF, s * HALF, HALF, s * HALF, 0, 26, 1, 'cityWall');
-    b.wall(s * HALF, -HALF, s * HALF, HALF, 0, 26, 1, 'cityWall');
+    // 8 m, down from 26. At 26 the boundary was taller than every rooftop on
+    // the map and closed the sky off completely; at 8 it still contains the
+    // street (the roof circuit at 12 is set well inboard) while leaving the
+    // treeline and sky visible from ground level.
+    b.wall(-HALF, s * HALF, HALF, s * HALF, 0, 8, 1, 'cityWall');
+    b.wall(s * HALF, -HALF, s * HALF, HALF, 0, 8, 1, 'cityWall');
     b.neon(-HALF + 1, s * (HALF - 0.6), HALF - 1, s * (HALF - 0.6), 4, 'neonMagenta', 0.16);
     b.neon(s * (HALF - 0.6), -HALF + 1, s * (HALF - 0.6), HALF - 1, 4, 'neonCyan', 0.16);
   }
@@ -231,11 +235,15 @@ export function buildMirageDistrict(): MapDef {
   ];
   streetCover.forEach(([x, z, w, d, ry]) => b.cover(x, z, w, d, 0, 1.15, 'hull', ry));
 
+  // Parked in the avenues, not against the blocks. Two of these used to sit at
+  // (-+18, +-16), which is inside the tower footprint (x 15..33, z 12..28
+  // mirrored) - the van rendered halfway through a wall. The prop-placement
+  // test now guards this.
   const vehicles: readonly [number, number, number][] = [
     [-16, -18, 20],
     [16, 18, -160],
-    [-18, 16, 105],
-    [18, -16, -75],
+    [-9, 20, 105],
+    [9, -20, -75],
     [-34, -14, 8],
     [34, 14, 188],
   ];
@@ -289,22 +297,95 @@ export function buildMirageDistrict(): MapDef {
   b.ammoPickup('am_5', 0, ROOF, -BRIDGE_Z);
   b.ammoPickup('am_6', 0, ROOF, BRIDGE_Z);
 
+  // ---------------------------------------------------------- natural cover
+  //
+  // Boulders and logs rather than trees: this is a stone-and-sand street, and
+  // a broadleaf growing out of paving would read as a mistake. Solid brush
+  // plus prop, so they stop players and bullets. Mirrored, and kept out of the
+  // alley mouths so the lanes still connect.
+  //
+  // Positions are constrained by the block layout, not chosen freely: the four
+  // towers occupy x 15..33 / z 12..28 (mirrored) and the annexes sit beyond
+  // them. An earlier pass placed these by eye and put a boulder halfway inside
+  // a tower wall. Everything here sits in the avenues - |x| or |z| under 12,
+  // or outboard of 33 - which is open street on every quadrant.
+  for (const s of [-1, 1] as const) {
+    b.rockCover(s * 8, s * -34, 0, 1.05, s * 20);
+    b.rockCover(s * -38, s * 8, 0, 0.9, s * -50);
+    b.logCover(s * -8, s * 36, 0, 1.25, s * 15);
+    b.logCover(s * 40, s * -6, 0, 1.15, s * -35);
+  }
+
+  // ------------------------------------------------------------- landscape
+  //
+  // Palms rather than broadleaves, to keep the three maps distinguishable at
+  // a glance now that they share one palette. Scaled larger than elsewhere:
+  // the boundary here is 26 m, so a canopy has further to climb before it
+  // clears the rooftops.
+  //
+  // Everything below is decoration - props never collide and never stop
+  // bullets, which is why all of it is either outside the bound or ankle high.
+  for (const [x, z, s, ry] of [
+    [-70, -58, 6.0, 15], [-26, -76, 5.2, -40], [30, -74, 6.4, 70],
+    [70, -52, 5.6, 120], [78, -8, 6.2, -20], [68, 46, 5.2, 85],
+    [24, 78, 6.6, 30], [-30, 76, 5.6, 150], [-72, 48, 6.0, -95],
+    [-80, 6, 5.2, 60],
+  ] as const) {
+    b.propOnGround('prop_tree_palm', x, z, ry, s);
+  }
+  for (const [x, z, s, ry] of [
+    [-90, -40, 5.4, 25], [50, -88, 5.0, -35], [90, 36, 5.6, 80], [-46, 90, 5.2, 130],
+  ] as const) {
+    b.propOnGround('prop_tree_round', x, z, ry, s);
+  }
+  for (const [x, z, s, ry] of [
+    [-84, -78, 4.0, 20], [86, -76, 4.4, -45], [82, 84, 3.8, 75], [-86, 80, 4.2, 115],
+  ] as const) {
+    b.propOnGround('prop_rock_spire', x, z, ry, s);
+  }
+  // The street is sand and stone here, so scatter is stone rather than grass.
+  for (const [x, z, ry] of [
+    [-38, -20, 25], [36, 22, -70], [-22, 37, 110], [23, -38, 20],
+    [-41, 10, 60], [42, -11, -30], [-14, -41, 145], [15, 40, 85],
+  ] as const) {
+    b.propOnGround('prop_rock_cluster', x, z, ry, 1.2);
+  }
+  for (const [x, z, ry] of [
+    [-34, -33, 35], [33, 32, -60], [-31, 35, 100], [32, -35, 150],
+  ] as const) {
+    b.propOnGround('prop_grass_tuft', x, z, ry, 1.1);
+  }
+
   return b.finish(
     { minX: -HALF, maxX: HALF, minZ: -HALF, maxZ: HALF },
     -20,
     {
       skybox: 'mirage',
-      // Late-afternoon warm urban haze.
-      fogColor: 0xdcd0be,
-      fogDensity: 0.014,
-      hemiSky: 0xe8ddc8,
-      hemiGround: 0x9a9086,
-      hemiIntensity: 1.25,
-      sunColor: 0xfff0d8,
-      sunIntensity: 0.75,
-      sunDir: [0.35, -0.85, 0.4],
+      // Golden hour. Warmer sky, and a low sun that rakes across the ground so
+      // the height changes throw long readable shadows.
+      fogColor: 0xf2d9b2,
+      fogDensity: 0.008,
+      hemiSky: 0xdcc49a,
+      hemiGround: 0x8a9c58,
+      /*
+       * The hemisphere is the only thing lighting the street.
+       *
+       * This is a city block: buildings line both sides of every avenue, so
+       * the sun reaches the ground almost nowhere and the ambient term IS the
+       * street lighting. At 1.15 with a raking sun the road rendered nearly
+       * black while the rooftops beside it were correctly lit - the ground was
+       * not broken, it was simply unlit.
+       *
+       * The sun is also back up near vertical. Dropping it to -0.55 for long
+       * dramatic shadows is the right instinct outdoors and the wrong one
+       * inside a street grid.
+       */
+      hemiIntensity: 1.9,
+      sunColor: 0xffd9a0,
+      sunIntensity: 1.7,
+      sunDir: [0.35, -0.95, 0.4],
       ambientLoop: 'amb_mirage',
-      neonBoost: 1.45,
+      neonBoost: 1,
     },
   );
 }

@@ -9,6 +9,12 @@
  * Pools are fixed-size and oldest-wins: when a pool is exhausted the oldest
  * live effect is recycled rather than growing the pool, so memory is bounded
  * no matter how chaotic the match gets.
+ *
+ * Light is the one thing that is NOT pooled per effect. Point lights are not
+ * culled by a forward renderer and their visible count is part of the shader
+ * program cache key, so a light per pool slot both lit the level from dozens of
+ * sources and recompiled every material each time a gun went off. All effects
+ * share one tiny, permanently-present set instead - see `FlashLights`.
  */
 
 import {
@@ -98,6 +104,101 @@ class Pool<T extends Poolable> {
 }
 
 // ---------------------------------------------------------------------------
+// Shared flash lights
+// ---------------------------------------------------------------------------
+
+/**
+ * How many lights every effect in the game shares, by effects quality.
+ *
+ * Read once when the system is built and never again, because the number must
+ * not change while a map is loaded - see `FlashLights`.
+ */
+const FLASH_LIGHT_COUNT = { low: 1, medium: 2, high: 3 } as const;
+
+/**
+ * A fixed, tiny set of point lights that every effect borrows.
+ *
+ * There used to be one PointLight per pool slot: 56 impacts, 14 muzzle flashes
+ * and 8 explosions, so up to 78 of them, on top of the map's own. That is bad
+ * twice over.
+ *
+ * The cheap half of the problem is that three.js's forward renderer does not
+ * cull lights - every visible light is evaluated by every fragment of every lit
+ * material, in range or not.
+ *
+ * The expensive half is that the *number* of visible lights is part of the
+ * shader program cache key. Showing and hiding a light per muzzle flash
+ * therefore changed the program every lit material needed, several times a
+ * second, and three.js answered by recompiling the level's ~20 materials and the
+ * models' ~200. Shader compilation is a synchronous, multi-millisecond, driver-
+ * side operation. That is the hitching players feel the instant a fight starts.
+ *
+ * So: a handful of lights, created once, added once, and never hidden. An idle
+ * light sits at intensity 0 - which costs a few fragment instructions and
+ * nothing else - rather than being removed or made invisible, because
+ * `visible = false` is exactly what changes the count. The visible-light count
+ * is then constant for the whole life of a map and every program is compiled
+ * once, during load.
+ *
+ * The visual survives: a muzzle flash still throws light on the wall next to it,
+ * because at any instant only one or two flashes are close enough to the camera
+ * to matter and the borrow rule below hands the lights to the brightest.
+ */
+class FlashLights {
+  private readonly lights: PointLight[] = [];
+  /** Intensity lost per second, per light, so a flash fades over its own life. */
+  private readonly falloff: number[] = [];
+
+  constructor(parent: Object3D, count: number) {
+    for (let i = 0; i < count; i++) {
+      const light = new PointLight(0xffffff, 0, 8, 2);
+      light.castShadow = false;
+      parent.add(light);
+      this.lights.push(light);
+      this.falloff.push(0);
+    }
+  }
+
+  /**
+   * Light an effect, if one of the shared lights is dimmer than it.
+   *
+   * The dimmest light is taken, and only when the new flash would be brighter
+   * than what is already there. An explosion therefore keeps its light while the
+   * gunfire around it does not steal it, and the request that loses simply
+   * renders without a light - which is the same thing that happened to the 57th
+   * simultaneous impact before, just decided on brightness instead of on
+   * pool order.
+   */
+  flash(position: Vector3, color: number, intensity: number, distance: number, life: number): void {
+    if (this.lights.length === 0 || intensity <= 0 || life <= 0) return;
+    let pick = 0;
+    for (let i = 1; i < this.lights.length; i++) {
+      if (this.lights[i].intensity < this.lights[pick].intensity) pick = i;
+    }
+    const light = this.lights[pick];
+    if (light.intensity >= intensity) return;
+    light.position.copy(position);
+    light.color.setHex(color);
+    light.intensity = intensity;
+    light.distance = distance;
+    this.falloff[pick] = intensity / life;
+  }
+
+  update(dt: number): void {
+    for (let i = 0; i < this.lights.length; i++) {
+      const light = this.lights[i];
+      if (light.intensity <= 0) continue;
+      light.intensity = Math.max(0, light.intensity - this.falloff[i] * dt);
+    }
+  }
+
+  /** Darken without hiding: the count has to survive a respawn or a map change. */
+  clear(): void {
+    for (const light of this.lights) light.intensity = 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Effect records
 // ---------------------------------------------------------------------------
 
@@ -114,14 +215,12 @@ interface Impact extends Poolable {
   points: Points;
   velocities: Float32Array;
   basePositions: Float32Array;
-  light: PointLight | null;
 }
 
 interface Muzzle extends Poolable {
   object: Group;
   core: Mesh;
   flare: Mesh;
-  light: PointLight;
 }
 
 interface Shell extends Poolable {
@@ -138,7 +237,6 @@ interface Blast extends Poolable {
   object: Group;
   shell: Mesh;
   ring: Mesh;
-  light: PointLight;
 }
 
 interface Burst extends Poolable {
@@ -173,6 +271,7 @@ export class FxSystem {
   private blasts: Pool<Blast>;
   private bursts: Pool<Burst>;
   private beams: Pool<Beam>;
+  private flashes: FlashLights;
   private quality: 'low' | 'medium' | 'high';
   private decalLimit: number;
 
@@ -181,6 +280,9 @@ export class FxSystem {
     scene.add(this.root);
     this.quality = store.str('effectsQuality') as 'low' | 'medium' | 'high';
     this.decalLimit = store.num('decalLimit');
+    // Built before any pool, so the light count is settled before the first
+    // material is compiled against it.
+    this.flashes = new FlashLights(this.root, FLASH_LIGHT_COUNT[this.quality] ?? FLASH_LIGHT_COUNT.high);
 
     const budget = this.quality === 'low' ? 0.45 : this.quality === 'medium' ? 0.75 : 1;
     const sparkMap = sparkTexture();
@@ -240,11 +342,6 @@ export class FxSystem {
       points.frustumCulled = false;
       group.add(points);
 
-      let light: PointLight | null = null;
-      if (this.quality === 'high') {
-        light = new PointLight(0xffffff, 0, 4, 2);
-        group.add(light);
-      }
       this.root.add(group);
       return {
         object: group,
@@ -255,7 +352,6 @@ export class FxSystem {
         points,
         velocities: new Float32Array(particlesPerImpact * 3),
         basePositions: positions,
-        light,
       };
     });
 
@@ -281,10 +377,8 @@ export class FxSystem {
         }),
       );
       group.add(core, flare);
-      const light = new PointLight(0xffffff, 0, 7, 2);
-      group.add(light);
       this.root.add(group);
-      return { object: group, life: 0, maxLife: 0.055, active: false, core, flare, light };
+      return { object: group, life: 0, maxLife: 0.055, active: false, core, flare };
     });
 
     // -- shells ----------------------------------------------------------
@@ -338,10 +432,9 @@ export class FxSystem {
         }),
       );
       ring.rotation.x = -Math.PI / 2;
-      const light = new PointLight(0xffb060, 0, 18, 2);
-      group.add(shell, ring, light);
+      group.add(shell, ring);
       this.root.add(group);
-      return { object: group, life: 0, maxLife: 0.55, active: false, shell, ring, light };
+      return { object: group, life: 0, maxLife: 0.55, active: false, shell, ring };
     });
 
     // -- generic particle bursts (deaths, ability effects) ---------------
@@ -465,9 +558,11 @@ export class FxSystem {
       vel[o + 2] = tmpV.z * speed;
     }
     (i.points.geometry.attributes.position as BufferAttribute).needsUpdate = true;
-    if (i.light) {
-      i.light.color.setHex(color);
-      i.light.intensity = store.bool('flashReduction') ? 1.2 : 3;
+    // Still high-quality only. Impacts are by far the most frequent effect, and
+    // letting them bid for a shared light on every quality level would mean the
+    // muzzle flash they came from rarely got one.
+    if (this.quality === 'high') {
+      this.flashes.flash(i.object.position, color, store.bool('flashReduction') ? 1.2 : 3, 4, i.maxLife);
     }
 
     if (surface !== 'flesh' && surface !== 'air') this.decal(position, normal);
@@ -502,8 +597,7 @@ export class FxSystem {
     (m.core.material as MeshBasicMaterial).opacity = 1;
     (m.flare.material as MeshBasicMaterial).color.setHex(color);
     (m.flare.material as MeshBasicMaterial).opacity = 0.9;
-    m.light.color.setHex(color);
-    m.light.intensity = 6 * scale * reduce;
+    this.flashes.flash(m.object.position, color, 6 * scale * reduce, 7, m.maxLife);
   }
 
   ejectShell(position: Vector3, right: Vector3, up: Vector3, color: number): void {
@@ -530,9 +624,9 @@ export class FxSystem {
     (b.shell.material as MeshBasicMaterial).color.setHex(color);
     (b.shell.material as MeshBasicMaterial).opacity = 1;
     (b.ring.material as MeshBasicMaterial).opacity = 1;
-    b.light.color.setHex(color);
-    b.light.intensity = store.bool('flashReduction') ? 6 : 16;
-    b.light.distance = radius * 4;
+    // The flash is out well before the shell has finished expanding - 0.6 of the
+    // blast's life, which is where the old per-blast light's decay curve landed.
+    this.flashes.flash(position, color, store.bool('flashReduction') ? 6 : 16, radius * 4, b.maxLife * 0.6);
     this.burst(position, radius * 3.2, color, 1.1, 9);
   }
 
@@ -592,6 +686,8 @@ export class FxSystem {
   // -----------------------------------------------------------------------
 
   update(dt: number): void {
+    this.flashes.update(dt);
+
     // Tracers: shrink towards the impact point so they read as travelling.
     for (const t of this.tracers.items) {
       if (!t.active) continue;
@@ -627,7 +723,6 @@ export class FxSystem {
       const k = i.life / i.maxLife;
       if (k >= 1) {
         this.impacts.release(i);
-        if (i.light) i.light.intensity = 0;
         continue;
       }
       (i.sprite.material as MeshBasicMaterial).opacity = 1 - k;
@@ -643,7 +738,6 @@ export class FxSystem {
       }
       attr.needsUpdate = true;
       (i.points.material as PointsMaterial).opacity = 1 - k;
-      if (i.light) i.light.intensity *= 1 - k;
     }
 
     for (const m of this.muzzles.items) {
@@ -652,13 +746,11 @@ export class FxSystem {
       const k = m.life / m.maxLife;
       if (k >= 1) {
         this.muzzles.release(m);
-        m.light.intensity = 0;
         continue;
       }
       (m.core.material as MeshBasicMaterial).opacity = 1 - k;
       (m.flare.material as MeshBasicMaterial).opacity = 0.9 * (1 - k);
       m.flare.scale.multiplyScalar(1 + dt * 9);
-      m.light.intensity *= 1 - k * 1.4;
     }
 
     for (const s of this.shells.items) {
@@ -693,14 +785,12 @@ export class FxSystem {
       const k = b.life / b.maxLife;
       if (k >= 1) {
         this.blasts.release(b);
-        b.light.intensity = 0;
         continue;
       }
       b.shell.scale.multiplyScalar(1 + dt * 5.5);
       b.ring.scale.multiplyScalar(1 + dt * 9);
       (b.shell.material as MeshBasicMaterial).opacity = 1 - k;
       (b.ring.material as MeshBasicMaterial).opacity = (1 - k) * 0.8;
-      b.light.intensity *= 1 - k * 1.6;
     }
 
     for (const b of this.bursts.items) {
@@ -751,6 +841,7 @@ export class FxSystem {
         item.object.visible = false;
       }
     }
+    this.flashes.clear();
   }
 
   clearAll(): void {

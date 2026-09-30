@@ -67,6 +67,9 @@ export function buildMapMeshes(def: MapDef): MapMeshes {
   const neonBoost = def.ambience.neonBoost;
 
   for (const brush of def.brushes) {
+    // Collision-only hull: a Blender model is drawn over it instead. See the
+    // note on `noDraw` in world.ts.
+    if (brush.noDraw) continue;
     const key = brush.m;
     let batch = batches.get(key);
     if (!batch) {
@@ -109,8 +112,18 @@ export function buildMapMeshes(def: MapDef): MapMeshes {
     triangles += batch.indices.length / 3;
   }
 
-  // Map lights. Point lights are expensive, so they are budgeted by the effects
-  // quality setting and the nearest ones win.
+  /*
+   * Map lights, budgeted, brightest first.
+   *
+   * The brightest win, not the nearest - the comment here used to claim
+   * otherwise while the sort said intensity. Intensity is the right key and
+   * distance is not available to it: this set is chosen once when the map is
+   * built and then never revisited, so "nearest" would mean nearest to wherever
+   * the player happened to spawn, and would be wrong from the first second of
+   * movement. Re-sorting per frame is not an option either, because changing
+   * which lights are visible is precisely what triggers the shader recompiles
+   * `lightBudget` exists to avoid.
+   */
   const lights: PointLight[] = [];
   const budget = lightBudget();
   const sorted = [...def.lights].sort((a, b) => b.intensity - a.intensity).slice(0, budget);
@@ -139,14 +152,34 @@ export function buildMapMeshes(def: MapDef): MapMeshes {
   };
 }
 
+/**
+ * How many of a map's point lights are actually placed.
+ *
+ * These numbers are small on purpose, and the reason is not fill rate.
+ *
+ * three.js's forward renderer does no light culling: every visible light is
+ * evaluated by every fragment of every lit material, whether or not it is
+ * within range. Worse, the *count* of visible lights is baked into the shader
+ * program cache key, so the level's ~20 materials and the models' ~200 are
+ * compiled per distinct light count. At 28 map lights plus one light per
+ * effects-pool slot, over a hundred lights could be visible at once and the
+ * count changed with every muzzle flash - which recompiled several hundred
+ * programs mid-firefight. That is the stutter, and it arrives exactly when a
+ * fight starts.
+ *
+ * 4/6/8 keeps the fragment cost bounded and, with the effects lights now fixed
+ * in number (see `FxSystem`), keeps the visible-light count constant for the
+ * whole life of a map: programs are compiled once, at load, and never again.
+ * The maps are lit mostly by the sun and hemisphere anyway; these are accents.
+ */
 function lightBudget(): number {
   switch (store.str('effectsQuality')) {
     case 'low':
-      return 6;
+      return 4;
     case 'medium':
-      return 14;
+      return 6;
     default:
-      return 28;
+      return 8;
   }
 }
 
@@ -354,6 +387,30 @@ function appendWedge(batch: Batch, brush: BrushDef): void {
   // Two triangular sides.
   faces.push({ idx: [0, 4, 3], n: alongX ? [0, 0, -1] : [-1, 0, 0] });
   faces.push({ idx: [1, 2, 5], n: alongX ? [0, 0, 1] : [1, 0, 0] });
+
+  /*
+   * Flip the winding when the ramp rises toward -x or -z.
+   *
+   * `lowA`/`highA` swap with `sign`, which mirrors the whole vertex set - and
+   * mirroring reverses winding. The index lists above are only correct for
+   * sign = +1; at sign = -1 every face came out wound backwards, so with
+   * backface culling on, every '-x' and '-z' ramp rendered with its sides,
+   * bottom and back missing. In game that looks like a ramp you can see
+   * straight through, or a slope floating with no body under it.
+   *
+   * The declared normals are unaffected: they describe the true outward
+   * direction and are already right for both signs. Only the triangle order
+   * has to be reversed.
+   */
+  if (sign < 0) {
+    for (const face of faces) {
+      for (let i = 0; i + 2 < face.idx.length; i += 3) {
+        const swap = face.idx[i + 1];
+        face.idx[i + 1] = face.idx[i + 2];
+        face.idx[i + 2] = swap;
+      }
+    }
+  }
 
   for (const face of faces) {
     // Each face gets its own vertices so normals stay flat.

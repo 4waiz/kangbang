@@ -1,41 +1,65 @@
 /* ==========================================================================
    KANG BANG - design system
    --------------------------------------------------------------------------
-   Identity: near-black violet substrate, vivid violet primary energy, ember
-   secondary, hard-cut corners (never rounded rectangles), thin luminous rules,
-   and condensed uppercase display type. Panels are angled plates with a clipped
-   corner, not translucent rectangles.
+   Identity: hand-painted storybook. Parchment surfaces, timber rules, leaf
+   green and warm gold accents, generously rounded corners and a friendly
+   chunky display face. Panels are pages pinned to a board, not angled plates.
+
+   The system carries TWO themes under one set of names:
+
+     :root                  the menus - light parchment with dark ink.
+     .hud, .chat, .toast    anything floating over the live 3D scene - dark
+                            translucent plates with light ink.
+
+   That split is not decoration. The world is a sunlit meadow under a blue
+   sky, so a cream panel is the right surface for a menu that covers the
+   screen and completely unreadable as a HUD plate sitting on grass. Both
+   scopes define the same variable names, so hud.css and menu.css keep using
+   var() without knowing which theme they are in.
 
    Everything scales from --ui-scale so the accessibility slider works without
    per-component maths.
    ========================================================================== */
 
 :root {
-  /* -- palette ---------------------------------------------------------- */
-  --void: #09070e;
-  --substrate: #0c0914;
-  --plate: #161020;
-  --plate-2: #1d152b;
-  --plate-3: #261c38;
-  --edge: #36284d;
-  --edge-hot: #4b376c;
-  --ink: #f1eefb;
-  --ink-dim: #b0a3c6;
-  --ink-faint: #7d6f97;
+  /* -- palette: menus ---------------------------------------------------- */
+  --void: #e2cb9e;
+  --substrate: #ecd9b3;
+  --plate: #f8ecd4;
+  --plate-2: #fdf5e5;
+  --plate-3: #fffcf4;
+  --edge: #ad8551;
+  --edge-hot: #8a6234;
+  --ink: #3b2a17;
+  --ink-dim: #6a512f;
+  --ink-faint: #725830;
 
-  --ion: #a855f7;
-  --ion-lite: #d8b4fe;
-  --ion-deep: #2f0d4c;
-  --ember: #ff5a3c;
-  --ember-deep: #4a1d12;
-  --lime: #8dff4a;
-  --amber: #ffb03a;
-  --magenta: #ff3ec8;
+  --ion: #36691d;
+  --ion-lite: #7fb83c;
+  --ion-deep: #1e3a15;
+  --ember: #a9341a;
+  --amber: #7f5404;
 
-  --good: #4be08a;
-  --warn: #ffb03a;
-  --bad: #ff4d5e;
-  --bad-deep: #8c0a18;
+  --good: #27672f;
+  --warn: #7f5404;
+  --bad: #ac2b24;
+  --bad-deep: #5e1611;
+
+  /* -- team hues ----------------------------------------------------------
+     Mirrored from TEAM_COLORS / TEAM_COLORS_CSS in packages/shared/src/types.ts,
+     which the renderer and the canvas minimap read directly - keep the two in
+     step. Blue and terracotta rather than the old violet/orange: the ground is
+     grass now, so neither team may be green, and these two sit far apart in hue
+     at nearly equal luminance so neither side reads as the louder one.
+
+     EMBER borrows --ember rather than repeating the hex, so a reskin (and every
+     colourblind preset below) moves both at once. The alias has to be restated
+     in each scope that redefines --ember: var() inside a custom property is
+     substituted where the property is DECLARED, so a lone :root alias would
+     resolve to the menu terracotta and then inherit that resolved value
+     straight through the over-the-world override. */
+  --team-ion: #245c99;
+  --team-ember: var(--ember);
 
   /* -- palette channels --------------------------------------------------
      rgba() cannot take a hex, so every colour that needs a translucent form
@@ -43,26 +67,29 @@
      rgba(var(--x-rgb), a) rather than re-typing the channels: a reskin is
      then a single edit in this block, and the colourblind presets below can
      override the triplets alongside their hexes. */
-  --void-rgb: 9, 7, 14;
-  --substrate-rgb: 12, 9, 20;
-  --plate-rgb: 22, 16, 32;
-  --plate-3-rgb: 38, 28, 56;
-  --edge-rgb: 54, 40, 77;
-  --ion-rgb: 168, 85, 247;
-  --ion-deep-rgb: 47, 13, 76;
-  --ember-rgb: 255, 90, 60;
-  --amber-rgb: 255, 176, 58;
-  --good-rgb: 75, 224, 138;
-  --bad-rgb: 255, 77, 94;
-  --bad-deep-rgb: 140, 10, 24;
+  --void-rgb: 226, 203, 158;
+  --substrate-rgb: 236, 217, 179;
+  --plate-rgb: 248, 236, 212;
+  --plate-3-rgb: 255, 252, 244;
+  --edge-rgb: 173, 133, 81;
+  --ion-rgb: 54, 105, 29;
+  --ion-deep-rgb: 30, 58, 21;
+  --ember-rgb: 169, 52, 26;
+  --bad-deep-rgb: 94, 22, 17;
+
+  /* Shadows and full-screen masks. Warm umber rather than neutral black: a
+     pure black shadow on parchment reads as a hole punched in the paper. */
+  --shade-rgb: 46, 30, 16;
 
   /* -- type -------------------------------------------------------------
      System stacks only: no webfont request, so the boot screen never waits on
-     the network and the game works offline. The condensed grotesques listed
-     first ship with Windows/macOS and give the display face its sci-fi cut. */
-  --font-display: 'Bahnschrift SemiBold Condensed', 'Bahnschrift', 'DIN Alternate', 'Haettenschweiler',
-    'Arial Narrow', 'Helvetica Neue', sans-serif;
-  --font-ui: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+     the network and the game works offline. The display face is now a soft
+     humanist rather than a condensed grotesque - Arial Rounded ships with
+     macOS and Office, Trebuchet with both Windows and macOS, and every
+     fallback after them is at least not condensed. */
+  --font-display: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI Variable Display', 'Segoe UI',
+    system-ui, -apple-system, sans-serif;
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
   --font-mono: 'Cascadia Mono', 'Consolas', 'SF Mono', 'Menlo', monospace;
 
   /* -- scale ------------------------------------------------------------ */
@@ -72,65 +99,175 @@
   --gap-s: calc(7 * var(--u));
   --gap-l: calc(22 * var(--u));
 
-  --shadow-plate: 0 calc(18 * var(--u)) calc(48 * var(--u)) rgba(0, 0, 0, 0.6);
-  --glow-ion: 0 0 calc(18 * var(--u)) rgba(var(--ion-rgb), 0.35);
-  --glow-ember: 0 0 calc(18 * var(--u)) rgba(var(--ember-rgb), 0.35);
+  --shadow-plate: 0 calc(10 * var(--u)) calc(28 * var(--u)) rgba(var(--shade-rgb), 0.22);
+  --glow-ion: 0 0 calc(16 * var(--u)) rgba(var(--ion-rgb), 0.3);
 
-  /* Angled corner size used by every plate. */
-  --notch: calc(14 * var(--u));
+  /* Corner rounding used by every surface. Replaces the old clipped corner:
+     one radius token, so a plate, a button and a card round together. */
+  --radius: calc(10 * var(--u));
+  --radius-s: calc(6 * var(--u));
+  --radius-l: calc(18 * var(--u));
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   Over-the-world scope
+   --------------------------------------------------------------------------
+   The HUD, the chat log and the toast all float over the live scene, which is
+   now bright. They re-point the surface and ink ramps to a dark set so text
+   keeps a dark plate behind it, and they swap the leaf-green accent for warm
+   gold - green is the colour of the ground here, so it is the one hue a HUD
+   cannot use.
+
+   These are declarations on the .hud / .chat / .toast elements themselves, so
+   they beat the :root values for those subtrees by inheritance rather than by
+   specificity; the colourblind presets below have to restate anything they
+   want to reach inside them.
+   ========================================================================== */
+
+.hud,
+.chat,
+.toast {
+  --void: #14100a;
+  --substrate: #1d1810;
+  --plate: #262015;
+  --plate-2: #322a1c;
+  --plate-3: #3f3524;
+  --edge: #a08560;
+  --edge-hot: #c4a674;
+  --ink: #fff9ec;
+  --ink-dim: #f0e4ca;
+  --ink-faint: #d3c19c;
+
+  --ion: #f5b93f;
+  --ion-lite: #ffdf9e;
+  --ion-deep: #2b1e04;
+  --ember: #ff8a5c;
+  --amber: #ffcf5c;
+
+  --good: #5fd36a;
+  --warn: #ffcf5c;
+  --bad: #ff5566;
+  --bad-deep: #6b0f18;
+
+  --team-ion: #6fb2ec;
+  /* Restated, not inherited - see the note on --team-ember in :root. */
+  --team-ember: var(--ember);
+
+  --void-rgb: 20, 16, 10;
+  --substrate-rgb: 29, 24, 16;
+  --plate-rgb: 38, 32, 21;
+  --plate-3-rgb: 63, 53, 36;
+  --edge-rgb: 160, 133, 96;
+  --ion-rgb: 245, 185, 63;
+  --ion-deep-rgb: 43, 30, 4;
+  --ember-rgb: 255, 138, 92;
+  --bad-deep-rgb: 107, 15, 24;
+
+  --shade-rgb: 10, 7, 4;
+
+  /* Not optional. `color` is inherited as a RESOLVED value, so `body { color:
+     var(--ink) }` hands every descendant the menu's dark brown - redefining
+     --ink here would never reach text that does not set its own colour, and
+     the ammo counter, the timer and the health readout are all in that group.
+     Re-resolving --ink at the root of the scope is what makes them light. */
+  color: var(--ink);
 
   color-scheme: dark;
 }
 
 /* Colourblind presets remap the two team hues to pairs that stay separable
-   under the most common deficiencies. Applied on <html>. Each preset has to
-   restate the matching --*-rgb triplet, otherwise the translucent forms
-   (glows, row tints, the background wash) would keep the base hue. */
+   under the most common deficiencies, and move the leaf-green UI accent off
+   any hue that would then collide with a team. Applied on <html>. Each preset
+   has to restate the matching --*-rgb triplet, otherwise the translucent forms
+   (glows, row tints, the background wash) would keep the base hue.
+
+   Blue vs terracotta already survives protanopia and deuteranopia, so those
+   two presets only lift the red team's value - a deep red goes very dark once
+   the L cones are gone - and retune the accent. */
 :root[data-cb='protanopia'] {
-  /* Red is lost, so violet reads as blue: brighten it and pair with yellow. */
-  --ion: #9d7dff;
-  --ion-rgb: 157, 125, 255;
-  --ion-lite: #cbbcff;
-  --ion-deep: #241a5e;
-  --ion-deep-rgb: 36, 26, 94;
-  --ember: #ffd23a;
-  --ember-rgb: 255, 210, 58;
-  --magenta: #ffa73a;
+  --ember: #a86a08;
+  --ember-rgb: 168, 106, 8;
+  --team-ion: #1f63b8;
+  --ion: #2f6f8c;
+  --ion-rgb: 47, 111, 140;
+  --ion-lite: #6fb0cc;
+}
+:root[data-cb='protanopia'] .hud {
+  --ember: #ffb03a;
+  --ember-rgb: 255, 176, 58;
+  --team-ion: #6fb6f2;
+  --ion: #7fd0f0;
+  --ion-rgb: 127, 208, 240;
+  --ion-lite: #bfe8fa;
 }
 :root[data-cb='deuteranopia'] {
-  --ion: #a68cff;
-  --ion-rgb: 166, 140, 255;
-  --ion-lite: #d2c6ff;
-  --ion-deep: #281c5c;
-  --ion-deep-rgb: 40, 28, 92;
-  --ember: #ffc23a;
-  --ember-rgb: 255, 194, 58;
-  --lime: #ffe66b;
+  --ember: #a06808;
+  --ember-rgb: 160, 104, 8;
+  --team-ion: #22619f;
+  --ion: #2b6f8f;
+  --ion-rgb: 43, 111, 143;
+  --ion-lite: #6ab2cf;
+}
+:root[data-cb='deuteranopia'] .hud {
+  --ember: #ffbe4a;
+  --ember-rgb: 255, 190, 74;
+  --team-ion: #74b4ee;
+  --ion: #86d4f2;
+  --ion-rgb: 134, 212, 242;
+  --ion-lite: #c4ecfb;
 }
 :root[data-cb='tritanopia'] {
-  /* Blue is lost, so violet collapses onto the ember red. Swap the accent to
-     teal, which survives, and keep the light end of the ramp with it. */
-  --ion: #4fe0c0;
-  --ion-rgb: 79, 224, 192;
-  --ion-lite: #a8f0e0;
-  --ion-deep: #0d3f36;
-  --ion-deep-rgb: 13, 63, 54;
-  --ember: #ff6f8f;
-  --ember-rgb: 255, 111, 143;
+  /* Blue is lost, so the blue team drifts toward the greens of the map. Swap
+     it for a teal that survives and pair it with a crimson rather than an
+     orange - orange collapses onto pink here. */
+  --ember: #b31f47;
+  --ember-rgb: 179, 31, 71;
+  --team-ion: #0f6f76;
+  --ion: #7a5a12;
+  --ion-rgb: 122, 90, 18;
+  --ion-lite: #b99a3f;
+}
+:root[data-cb='tritanopia'] .hud {
+  --ember: #ff5c86;
+  --ember-rgb: 255, 92, 134;
+  --team-ion: #46d6dd;
+  --ion: #e0b656;
+  --ion-rgb: 224, 182, 86;
+  --ion-lite: #f4dca4;
 }
 :root[data-cb='highcontrast'] {
-  --ion: #cb8bff;
-  --ion-rgb: 203, 139, 255;
-  --ion-lite: #ecd8ff;
-  --ember: #ff8800;
-  --ember-rgb: 255, 136, 0;
+  --ink: #1a1006;
+  --ink-dim: #33240f;
+  --ink-faint: #4a3517;
+  --plate: #fffdf7;
+  --plate-rgb: 255, 253, 247;
+  --plate-2: #ffffff;
+  --plate-3: #ffffff;
+  --edge: #6b4a1e;
+  --edge-rgb: 107, 74, 30;
+  --ion: #2a5c14;
+  --ion-rgb: 42, 92, 20;
+  --ember: #9c2c10;
+  --ember-rgb: 156, 44, 16;
+  --team-ion: #164f8e;
+}
+:root[data-cb='highcontrast'] .hud {
   --ink: #ffffff;
-  --ink-dim: #e6ddf5;
-  --plate: #010004;
-  --plate-rgb: 1, 0, 4;
-  --plate-2: #07040f;
-  --edge: #7a63ad;
-  --edge-rgb: 122, 99, 173;
+  --ink-dim: #fdf6e6;
+  --ink-faint: #ecdcb8;
+  --void: #000000;
+  --void-rgb: 0, 0, 0;
+  --substrate: #060402;
+  --substrate-rgb: 6, 4, 2;
+  --edge: #d0b283;
+  --edge-rgb: 208, 178, 131;
+  --ion: #ffcf5c;
+  --ion-rgb: 255, 207, 92;
+  --ember: #ffa382;
+  --ember-rgb: 255, 163, 130;
+  --team-ion: #96cbf6;
 }
 
 :root[data-reduced-motion='1'] * {
@@ -159,7 +296,7 @@ body {
   padding: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--void);
+  background: var(--substrate);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: calc(14 * var(--u));
@@ -228,26 +365,26 @@ h3,
 h4 {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   margin: 0;
-  line-height: 1.05;
+  line-height: 1.08;
 }
 
 h1 {
   font-size: calc(42 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.04em;
 }
 h2 {
   font-size: calc(24 * var(--u));
 }
 h3 {
   font-size: calc(17 * var(--u));
-  letter-spacing: 0.12em;
+  letter-spacing: 0.03em;
 }
 h4 {
   font-size: calc(13 * var(--u));
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   color: var(--ink-dim);
 }
 
@@ -287,7 +424,7 @@ p {
 .eyebrow {
   font-family: var(--font-display);
   font-size: calc(11 * var(--u));
-  letter-spacing: 0.28em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-faint);
   display: flex;
@@ -298,7 +435,8 @@ p {
 .eyebrow::after {
   content: '';
   flex: 1;
-  height: 1px;
+  height: calc(2 * var(--u));
+  border-radius: var(--radius-s);
   background: linear-gradient(90deg, var(--edge), transparent);
 }
 
@@ -306,18 +444,16 @@ p {
    Plates - the core surface primitive
    ========================================================================== */
 
+/* The gradient stays inside the light end of the ramp and carries a solid
+   colour behind it. A plate has to be the LIGHTEST thing on screen wherever
+   text lands on it - letting the gradient fade down into the page tone made
+   the bottom of a long panel the worst contrast in the whole UI. */
 .plate {
   position: relative;
-  background: linear-gradient(160deg, var(--plate-2) 0%, var(--plate) 62%, var(--void) 100%);
-  border: 1px solid var(--edge);
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--notch)) 0,
-    100% var(--notch),
-    100% 100%,
-    var(--notch) 100%,
-    0 calc(100% - var(--notch))
-  );
+  background: linear-gradient(165deg, var(--plate-3), var(--plate-2) 55%, var(--plate)) var(--plate);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-plate);
   padding: var(--gap-l);
 }
 
@@ -326,20 +462,20 @@ p {
 }
 
 .plate--hot {
-  border-color: color-mix(in srgb, var(--ion) 45%, var(--edge));
-  box-shadow: var(--glow-ion);
+  border-color: var(--ion);
+  box-shadow: var(--shadow-plate), var(--glow-ion);
 }
 
-/* Thin luminous accent along the top edge of a plate. */
+/* Painted ribbon across the top of a plate, tucked under the rounded corner. */
 .plate::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  height: calc(2 * var(--u));
+  left: calc(-2 * var(--u));
+  top: calc(-2 * var(--u));
+  height: calc(5 * var(--u));
   width: 38%;
+  border-radius: var(--radius-l) 0 var(--radius-l) 0;
   background: linear-gradient(90deg, var(--ion), transparent);
-  opacity: 0.75;
 }
 
 .plate--ember::before {
@@ -351,7 +487,8 @@ p {
 }
 
 .rule {
-  height: 1px;
+  height: calc(2 * var(--u));
+  border-radius: var(--radius-s);
   background: linear-gradient(90deg, var(--edge), transparent);
   margin: var(--gap) 0;
   border: 0;
@@ -371,21 +508,15 @@ p {
   font-family: var(--font-display);
   font-size: calc(14 * var(--u));
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink);
-  background: linear-gradient(150deg, var(--plate-3), var(--plate));
-  border: 1px solid var(--edge);
+  background: linear-gradient(180deg, var(--plate-3), var(--plate)) var(--plate);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius);
   padding: calc(11 * var(--u)) calc(22 * var(--u));
   cursor: pointer;
-  clip-path: polygon(
-    0 0,
-    calc(100% - calc(10 * var(--u))) 0,
-    100% calc(10 * var(--u)),
-    100% 100%,
-    calc(10 * var(--u)) 100%,
-    0 calc(100% - calc(10 * var(--u)))
-  );
+  box-shadow: 0 calc(3 * var(--u)) 0 rgba(var(--shade-rgb), 0.28);
   transition:
     transform 0.12s ease,
     border-color 0.12s ease,
@@ -395,50 +526,40 @@ p {
   user-select: none;
 }
 
-.btn::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: calc(2 * var(--u));
-  width: 0;
-  background: var(--btn-accent);
-  transition: width 0.16s ease;
-}
-
 .btn:hover:not(:disabled) {
   border-color: var(--btn-accent);
-  background: linear-gradient(150deg, var(--plate-3), var(--plate-2));
-  transform: translateY(calc(-1 * var(--u)));
-  box-shadow: 0 0 calc(16 * var(--u)) color-mix(in srgb, var(--btn-accent) 30%, transparent);
+  background: linear-gradient(180deg, var(--plate-3), var(--plate-2)) var(--plate-2);
+  transform: translateY(calc(-2 * var(--u)));
+  box-shadow:
+    0 calc(5 * var(--u)) 0 rgba(var(--shade-rgb), 0.28),
+    0 0 calc(16 * var(--u)) color-mix(in srgb, var(--btn-accent) 28%, transparent);
 }
 
-.btn:hover:not(:disabled)::after {
-  width: 100%;
-}
-
+/* Pressing pushes the button down onto its own drop shadow. */
 .btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(calc(2 * var(--u)));
+  box-shadow: 0 0 0 rgba(var(--shade-rgb), 0.28);
 }
 
 .btn:focus-visible {
-  outline: calc(2 * var(--u)) solid var(--btn-accent);
+  outline: calc(3 * var(--u)) solid var(--btn-accent);
   outline-offset: calc(2 * var(--u));
 }
 
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .btn--primary {
-  background: linear-gradient(150deg, color-mix(in srgb, var(--ion) 22%, var(--plate-3)), var(--plate));
-  border-color: color-mix(in srgb, var(--ion) 55%, var(--edge));
+  color: var(--plate-3);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ion) 82%, var(--ion-lite)), var(--ion)) var(--ion);
+  border-color: var(--ion-deep);
 }
 
-.btn--primary::after {
-  width: 100%;
-  opacity: 0.8;
+.btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--ion-lite), var(--ion)) var(--ion);
+  border-color: var(--ion-deep);
 }
 
 .btn--danger {
@@ -448,17 +569,19 @@ p {
 .btn--ghost {
   background: transparent;
   border-color: var(--edge);
+  box-shadow: none;
 }
 
 .btn--lg {
   font-size: calc(18 * var(--u));
   padding: calc(15 * var(--u)) calc(34 * var(--u));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
 }
 
 .btn--sm {
   font-size: calc(11 * var(--u));
   padding: calc(7 * var(--u)) calc(13 * var(--u));
+  border-radius: var(--radius-s);
 }
 
 .btn--block {
@@ -470,6 +593,14 @@ p {
   font-size: calc(10 * var(--u));
   color: var(--ink-faint);
   letter-spacing: 0.06em;
+}
+
+/* The primary button's fill is the accent itself, so its hint sits on the fill
+   rather than on the panel. It takes the full ink rather than a dimmed mix -
+   at 10px there is no contrast budget to spend on making it look secondary,
+   and the smaller mono face already does that job. */
+.btn--primary .btn__hint {
+  color: var(--plate-3);
 }
 
 /* ==========================================================================
@@ -485,7 +616,7 @@ p {
 .field__label {
   font-family: var(--font-display);
   font-size: calc(12 * var(--u));
-  letter-spacing: 0.14em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-dim);
   display: flex;
@@ -506,6 +637,9 @@ p {
   line-height: 1.4;
 }
 
+/* Fields are paper laid on the parchment panel, so they are the LIGHTEST
+   surface rather than the darkest - a recessed well would be the dark-theme
+   reflex and it puts ink on the one surface where it has least contrast. */
 input[type='text'],
 input[type='number'],
 select,
@@ -513,8 +647,9 @@ textarea {
   font-family: var(--font-ui);
   font-size: calc(14 * var(--u));
   color: var(--ink);
-  background: var(--void);
-  border: 1px solid var(--edge);
+  background: var(--plate-3);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius-s);
   padding: calc(9 * var(--u)) calc(12 * var(--u));
   width: 100%;
 }
@@ -524,7 +659,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--ion);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ion) 40%, transparent);
+  box-shadow: 0 0 0 calc(2 * var(--u)) color-mix(in srgb, var(--ion) 35%, transparent);
 }
 
 input[type='range'] {
@@ -537,36 +672,39 @@ input[type='range'] {
 }
 
 input[type='range']::-webkit-slider-runnable-track {
-  height: calc(4 * var(--u));
-  background: linear-gradient(90deg, var(--ion) var(--fill, 50%), var(--edge) var(--fill, 50%));
+  height: calc(6 * var(--u));
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ion) var(--fill, 50%), var(--void) var(--fill, 50%));
 }
 
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: calc(14 * var(--u));
-  height: calc(14 * var(--u));
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
   margin-top: calc(-5 * var(--u));
-  background: var(--ink);
-  border: calc(2 * var(--u)) solid var(--ion);
-  transform: rotate(45deg);
+  background: var(--plate-3);
+  border: calc(3 * var(--u)) solid var(--ion);
+  border-radius: 999px;
 }
 
 input[type='range']::-moz-range-track {
-  height: calc(4 * var(--u));
-  background: var(--edge);
+  height: calc(6 * var(--u));
+  border-radius: 999px;
+  background: var(--void);
 }
 
 input[type='range']::-moz-range-progress {
-  height: calc(4 * var(--u));
+  height: calc(6 * var(--u));
+  border-radius: 999px;
   background: var(--ion);
 }
 
 input[type='range']::-moz-range-thumb {
-  width: calc(12 * var(--u));
-  height: calc(12 * var(--u));
-  background: var(--ink);
-  border: calc(2 * var(--u)) solid var(--ion);
-  border-radius: 0;
+  width: calc(14 * var(--u));
+  height: calc(14 * var(--u));
+  background: var(--plate-3);
+  border: calc(3 * var(--u)) solid var(--ion);
+  border-radius: 999px;
 }
 
 .toggle {
@@ -587,21 +725,25 @@ input[type='range']::-moz-range-thumb {
 
 .toggle__track {
   width: calc(44 * var(--u));
-  height: calc(20 * var(--u));
+  height: calc(22 * var(--u));
   background: var(--void);
-  border: 1px solid var(--edge);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
   position: relative;
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .toggle__track::after {
   content: '';
   position: absolute;
-  top: calc(3 * var(--u));
-  left: calc(3 * var(--u));
+  top: calc(2 * var(--u));
+  left: calc(2 * var(--u));
   width: calc(14 * var(--u));
-  height: calc(12 * var(--u));
-  background: var(--ink-faint);
+  height: calc(14 * var(--u));
+  border-radius: 999px;
+  background: var(--edge-hot);
   transition:
     transform 0.15s ease,
     background 0.15s ease;
@@ -609,29 +751,31 @@ input[type='range']::-moz-range-thumb {
 
 .toggle input:checked + .toggle__track {
   border-color: var(--ion);
+  background: color-mix(in srgb, var(--ion) 22%, var(--plate-3));
 }
 
 .toggle input:checked + .toggle__track::after {
   transform: translateX(calc(22 * var(--u)));
   background: var(--ion);
-  box-shadow: 0 0 calc(10 * var(--u)) var(--ion);
 }
 
 .toggle input:focus-visible + .toggle__track {
-  outline: calc(2 * var(--u)) solid var(--ion);
+  outline: calc(3 * var(--u)) solid var(--ion);
   outline-offset: calc(2 * var(--u));
 }
 
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--edge);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: var(--radius);
   background: var(--void);
+  overflow: hidden;
 }
 
 .segmented button {
   font-family: var(--font-display);
   font-size: calc(12 * var(--u));
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-dim);
   background: transparent;
@@ -644,7 +788,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .segmented button[aria-pressed='true'] {
-  color: var(--void);
+  color: var(--plate-3);
   background: var(--ion);
 }
 
@@ -696,16 +840,17 @@ input[type='range']::-moz-range-thumb {
 }
 
 .scroll::-webkit-scrollbar {
-  width: calc(8 * var(--u));
+  width: calc(10 * var(--u));
 }
 .scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 .scroll::-webkit-scrollbar-thumb {
   background: var(--edge);
+  border-radius: 999px;
 }
 .scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--ion);
+  background: var(--edge-hot);
 }
 
 .chip {
@@ -714,25 +859,26 @@ input[type='range']::-moz-range-thumb {
   gap: calc(5 * var(--u));
   font-family: var(--font-mono);
   font-size: calc(10 * var(--u));
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
-  background: var(--void);
-  border: 1px solid var(--edge);
-  padding: calc(3 * var(--u)) calc(8 * var(--u));
+  background: var(--plate-3);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
+  padding: calc(3 * var(--u)) calc(10 * var(--u));
 }
 
 .chip--ion {
   color: var(--ion);
-  border-color: color-mix(in srgb, var(--ion) 45%, var(--edge));
+  border-color: color-mix(in srgb, var(--ion) 55%, var(--edge));
 }
 .chip--ember {
   color: var(--ember);
-  border-color: color-mix(in srgb, var(--ember) 45%, var(--edge));
+  border-color: color-mix(in srgb, var(--ember) 55%, var(--edge));
 }
 .chip--good {
   color: var(--good);
-  border-color: color-mix(in srgb, var(--good) 45%, var(--edge));
+  border-color: color-mix(in srgb, var(--good) 55%, var(--edge));
 }
 .chip--locked {
   color: var(--ink-faint);
@@ -740,17 +886,18 @@ input[type='range']::-moz-range-thumb {
 
 .bar {
   position: relative;
-  height: calc(6 * var(--u));
+  height: calc(8 * var(--u));
   background: var(--void);
-  border: 1px solid var(--edge);
+  border: calc(2 * var(--u)) solid var(--edge);
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .bar__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: linear-gradient(90deg, var(--ion), color-mix(in srgb, var(--ion) 40%, var(--ion-lite)));
-  box-shadow: 0 0 calc(10 * var(--u)) color-mix(in srgb, var(--ion) 60%, transparent);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ion), var(--ion-lite));
   transition: width 0.3s ease;
 }
 
@@ -759,7 +906,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .bar--slim {
-  height: calc(3 * var(--u));
+  height: calc(5 * var(--u));
 }
 
 /* ==========================================================================
@@ -783,15 +930,6 @@ input[type='range']::-moz-range-thumb {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes scan {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(100%);
   }
 }
 

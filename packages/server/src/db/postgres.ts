@@ -12,6 +12,7 @@ import {
   metricValue,
   meetsLeaderboardMinimum,
   newProfile,
+  normaliseProfile,
   type ClassStatRow,
   type Database,
   type LeaderboardEntry,
@@ -137,7 +138,7 @@ export class PostgresDatabase implements Database {
   }
 
   private rowToProfile(r: Record<string, unknown>): PlayerProfile {
-    return {
+    return normaliseProfile({
       id: String(r.id),
       name: String(r.name),
       email: r.email == null ? null : String(r.email),
@@ -174,7 +175,7 @@ export class PostgresDatabase implements Database {
       lastWinDay: r.last_win_day == null ? null : String(r.last_win_day),
       banner: String(r.banner ?? 'banner_grid'),
       icon: String(r.icon ?? 'icon_recruit'),
-    };
+    });
   }
 
   async getProfile(id: string): Promise<PlayerProfile | null> {
@@ -186,11 +187,13 @@ export class PostgresDatabase implements Database {
     const now = Date.now();
     const p = newProfile(id, name, guest, now);
     await this.pool.query(
-      `INSERT INTO players (id, name, guest, created_at, last_seen_at, banner, icon)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      // cosmetics_json is written explicitly: its column default of '{}' has no
+      // `unlocked` array, and ensureProfile re-reads the row it just inserted.
+      `INSERT INTO players (id, name, guest, created_at, last_seen_at, banner, icon, cosmetics_json)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (id) DO UPDATE SET last_seen_at = $5,
          name = CASE WHEN $2 <> '' THEN $2 ELSE players.name END`,
-      [id, name, guest, now, now, p.banner, p.icon],
+      [id, name, guest, now, now, p.banner, p.icon, JSON.stringify(p.cosmetics)],
     );
     return (await this.getProfile(id)) ?? p;
   }

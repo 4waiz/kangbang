@@ -40,6 +40,21 @@ export interface BrushDef {
   penetrable?: boolean;
   /** Skip in the minimap render (ceilings, high catwalk undersides). */
   noMinimap?: boolean;
+  /**
+   * Collide, but never render. The inverse of `ghost`.
+   *
+   * This is what lets a structure be MODELLED in Blender instead of assembled
+   * from boxes. Brushes are the only source of collision, bullet blocking, the
+   * navmesh and the server's authority - a `prop()` is a mesh and nothing
+   * else - so a barn cannot simply become a GLB. Instead the brush stays as a
+   * plain invisible hull and a model is placed over it: the standard
+   * collision-hull / art-mesh split.
+   *
+   * The hull should be SIMPLER than the art and sit slightly inside it. A
+   * player stopped by geometry they cannot see is far worse than one who can
+   * clip a shoulder into an eave.
+   */
+  noDraw?: boolean;
 }
 
 /** Runtime brush with precomputed rotation + AABB. */
@@ -189,60 +204,71 @@ export interface MaterialDef {
 export const MATERIALS: Record<string, MaterialDef> = {
   // --- Art direction -------------------------------------------------------
   //
-  // Grounded and industrial rather than science fiction: warehouses, service
-  // corridors, offices, street level. Bright and high-key, because picking a
-  // silhouette out of a doorway instantly matters more competitively than any
-  // amount of surface detail.
+  // Stylised outdoors: meadow, rock, timber and thatch under a bright sky.
+  // Hand-painted rather than photographic - saturated albedo, matte surfaces,
+  // and nothing near black.
   //
-  // Two deliberate constraints, both of which also keep memory down:
+  // Three rules make the look, and all three are the opposite of what an
+  // industrial interior wanted:
   //
-  //   `metalness` is 0 almost everywhere. Metallic PBR needs an environment map
-  //   to reflect or it renders black, and that environment map was the single
-  //   largest object in the process at 12 MB. Painted, coated and cast surfaces
-  //   are genuinely non-metallic, so dropping it is accurate as well as cheap.
+  //   ROUGHNESS IS HIGH, near 1.0 on everything natural. This look is almost
+  //   pure diffuse. A specular highlight travelling across a surface is the
+  //   strongest photographic cue there is, so removing it does more for the
+  //   style than any change of hue.
   //
-  //   Emissive is reserved for things that actually emit: ceiling fixtures,
-  //   signage, screens. Everything else reads by albedo under real lighting.
-  //   Glowing trim on every surface is what made the old look sci-fi.
+  //   SATURATION IS HIGH AND VALUE IS COMPRESSED. Real grass is a desaturated
+  //   olive and real stone is nearly grey; these are neither. Nothing sits
+  //   very dark, because deep shadow reads as photographic and also hides
+  //   players, which matters more.
+  //
+  //   PATTERN IS ORGANIC. Most surfaces are `noise`, not `panel` or `grid`.
+  //   The regular tiling those two produce is what made the ground read as a
+  //   greybox floor, and it is the first thing the eye picks up.
+  //
+  // Keys are unchanged because every map references them by name, so this
+  // table restyles all three maps without touching a single brush. Several
+  // names are now historical - `hull` is timber, `asphalt` is a dirt path -
+  // and are kept only to avoid a rename across three map files for no gain.
   //
   // `surface` drives footstep and impact audio and is encoded in the wire
-  // protocol, so those values are load-bearing. Change a colour freely; changing
-  // a surface changes what players hear.
+  // protocol, so those values are load-bearing. Change a colour freely;
+  // changing a surface changes what players hear.
 
-  // Floors.
-  floorPlate: { color: 0xb9bcc0, emissive: 0, emissiveIntensity: 0, roughness: 0.82, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x6e7377, pattern: 'panel' },
-  floorLight: { color: 0xcfd3d7, emissive: 0, emissiveIntensity: 0, roughness: 0.78, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x80868b, pattern: 'grid' },
-  concrete: { color: 0xa8aaa6, emissive: 0, emissiveIntensity: 0, roughness: 0.94, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x646660, pattern: 'noise' },
+  // Ground. `floorPlate` is the main walkable surface on every map.
+  floorPlate: { color: 0x7cb342, emissive: 0, emissiveIntensity: 0, roughness: 0.98, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x4e7a2c, pattern: 'noise' },
+  floorLight: { color: 0x9ccc55, emissive: 0, emissiveIntensity: 0, roughness: 0.98, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x649a38, pattern: 'noise' },
+  concrete: { color: 0xa79c88, emissive: 0, emissiveIntensity: 0, roughness: 0.97, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x6b6456, pattern: 'noise' },
 
-  // Walls. Off-white above, painted band below: the standard industrial two-tone,
-  // and it gives the eye a horizon line indoors.
-  wallLight: { color: 0xe6e7e4, emissive: 0, emissiveIntensity: 0, roughness: 0.88, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x8f918d, pattern: 'panel' },
-  wallDark: { color: 0x4a5560, emissive: 0, emissiveIntensity: 0, roughness: 0.85, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x2f363d, pattern: 'panel' },
-  cityWall: { color: 0x9a958c, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x5e5a54, pattern: 'panel' },
+  // Walls. Warm plaster above a timber base - the cottage two-tone, and it
+  // still gives the eye a horizon line the way the industrial one did.
+  wallLight: { color: 0xf2e6cd, emissive: 0, emissiveIntensity: 0, roughness: 0.94, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x9c927e, pattern: 'plain' },
+  wallDark: { color: 0x6d4630, emissive: 0, emissiveIntensity: 0, roughness: 0.92, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x422b1d, pattern: 'plain' },
+  cityWall: { color: 0xb8ac96, emissive: 0, emissiveIntensity: 0, roughness: 0.96, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x726a5c, pattern: 'noise' },
 
   /**
-   * Ceiling fixtures, and the only strongly emissive material left. The
-   * interiors are enclosed, so without emitting fixtures the only light reaching
-   * the floor is the point-light budget, which is six lights for a 72 m room on
-   * low effects quality.
+   * Lanterns and hanging lamps, and still the only strongly emissive material.
+   * Anywhere the map encloses a space, this is what puts light on the floor
+   * beyond the point-light budget - six lights for a 72 m room on low effects
+   * quality.
    */
-  lampPanel: { color: 0xffffff, emissive: 0xfff6e2, emissiveIntensity: 0.85, roughness: 0.4, metalness: 0, opacity: 1, surface: 'panel', minimap: 0, pattern: 'plain' },
+  lampPanel: { color: 0xfff3d6, emissive: 0xffd89c, emissiveIntensity: 0.9, roughness: 0.5, metalness: 0, opacity: 1, surface: 'panel', minimap: 0, pattern: 'plain' },
 
-  // Structure: galvanised steel and painted girders. A little metalness for the
-  // sheen, not enough to need anything to reflect.
-  hull: { color: 0x8d9298, emissive: 0, emissiveIntensity: 0, roughness: 0.62, metalness: 0.12, opacity: 1, surface: 'metal', minimap: 0x565b60, pattern: 'panel' },
-  trim: { color: 0x3a3f45, emissive: 0, emissiveIntensity: 0, roughness: 0.6, metalness: 0.1, opacity: 1, surface: 'metal', minimap: 0x24282c, pattern: 'plain' },
-  grate: { color: 0x6e7378, emissive: 0, emissiveIntensity: 0, roughness: 0.72, metalness: 0.15, opacity: 1, surface: 'grate', minimap: 0x44484c, pattern: 'grate' },
+  // Structure: timber posts, planking and beams. Metalness is 0 - there is no
+  // metal in this world, and a sheen on a plank reads as plastic.
+  hull: { color: 0xc08a52, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0, opacity: 1, surface: 'metal', minimap: 0x7c5733, pattern: 'plain' },
+  trim: { color: 0x5c3a24, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0, opacity: 1, surface: 'metal', minimap: 0x382417, pattern: 'plain' },
+  grate: { color: 0x8a6039, emissive: 0, emissiveIntensity: 0, roughness: 0.92, metalness: 0, opacity: 1, surface: 'grate', minimap: 0x573c24, pattern: 'grate' },
 
-  // Cargo: shipping containers and crates, in the colours they actually come in.
-  crate: { color: 0xb5771f, emissive: 0, emissiveIntensity: 0, roughness: 0.8, metalness: 0.06, opacity: 1, surface: 'panel', minimap: 0x7a5015, pattern: 'panel' },
-  crateAlt: { color: 0x2f5d8c, emissive: 0, emissiveIntensity: 0, roughness: 0.8, metalness: 0.06, opacity: 1, surface: 'panel', minimap: 0x1f3e5e, pattern: 'panel' },
+  // Crates and barrels. `panel` is kept for these two deliberately: on a small
+  // box the regular division reads as planking rather than as tiling.
+  crate: { color: 0xcb9440, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x7f5b26, pattern: 'panel' },
+  crateAlt: { color: 0x4489ad, emissive: 0, emissiveIntensity: 0, roughness: 0.9, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x27516b, pattern: 'panel' },
 
-  // Safety-yellow floor marking and hazard tape.
-  hazard: { color: 0xe8c22a, emissive: 0, emissiveIntensity: 0, roughness: 0.7, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x9c831c, pattern: 'hazard' },
+  // Painted waymarking, on signposts and stall awnings.
+  hazard: { color: 0xf2c53d, emissive: 0, emissiveIntensity: 0, roughness: 0.86, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x9c7f26, pattern: 'hazard' },
 
-  glass: { color: 0xcfe0e6, emissive: 0, emissiveIntensity: 0, roughness: 0.1, metalness: 0, opacity: 0.2, surface: 'glass', minimap: 0, pattern: 'glass' },
-  cityGlass: { color: 0x7f97a4, emissive: 0, emissiveIntensity: 0, roughness: 0.16, metalness: 0.1, opacity: 0.5, surface: 'glass', minimap: 0x4e5d66, pattern: 'glass' },
+  glass: { color: 0xdaeef4, emissive: 0, emissiveIntensity: 0, roughness: 0.08, metalness: 0, opacity: 0.22, surface: 'glass', minimap: 0, pattern: 'glass' },
+  cityGlass: { color: 0x92c2cc, emissive: 0, emissiveIntensity: 0, roughness: 0.14, metalness: 0, opacity: 0.5, surface: 'glass', minimap: 0x4e5d66, pattern: 'glass' },
 
   /**
    * Accent keys, kept under their original names because every map references
@@ -250,25 +276,26 @@ export const MATERIALS: Record<string, MaterialDef> = {
    * neon: low emissive, so they read as real objects under real light. The four
    * still read apart at a glance, which is what the maps use them for.
    */
-  neonCyan: { color: 0x2f7fa8, emissive: 0x2f7fa8, emissiveIntensity: 0.35, roughness: 0.6, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x2a5f78, pattern: 'plain' },
-  neonMagenta: { color: 0xb2373f, emissive: 0xb2373f, emissiveIntensity: 0.35, roughness: 0.6, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x78262c, pattern: 'plain' },
-  neonAmber: { color: 0xd98722, emissive: 0xd98722, emissiveIntensity: 0.4, roughness: 0.6, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x8f5a17, pattern: 'plain' },
-  neonLime: { color: 0x3f9e4f, emissive: 0x3f9e4f, emissiveIntensity: 0.45, roughness: 0.6, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x2b6a36, pattern: 'plain' },
+  neonCyan: { color: 0x41b6c4, emissive: 0x2a8894, emissiveIntensity: 0.28, roughness: 0.82, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x2a5f78, pattern: 'plain' },
+  neonMagenta: { color: 0xd9557f, emissive: 0xa03a5c, emissiveIntensity: 0.28, roughness: 0.82, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x78262c, pattern: 'plain' },
+  neonAmber: { color: 0xef9b32, emissive: 0xc4761c, emissiveIntensity: 0.32, roughness: 0.82, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x8f5a17, pattern: 'plain' },
+  neonLime: { color: 0x8ecb3f, emissive: 0x5f9628, emissiveIntensity: 0.32, roughness: 0.82, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x2b6a36, pattern: 'plain' },
 
-  // Team markings: painted stencils, blue and red, high contrast against grey.
-  teamIon: { color: 0x2b6ea8, emissive: 0x1b4a72, emissiveIntensity: 0.25, roughness: 0.72, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x1f5280, pattern: 'panel' },
-  teamEmber: { color: 0xb04430, emissive: 0x73281a, emissiveIntensity: 0.25, roughness: 0.72, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x7d3020, pattern: 'panel' },
+  // Team markings: dyed banners and painted posts, blue and red, high contrast
+  // against the greens and browns of everything else.
+  teamIon: { color: 0x3d7fc4, emissive: 0x27568a, emissiveIntensity: 0.25, roughness: 0.86, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x1f5280, pattern: 'plain' },
+  teamEmber: { color: 0xd35a3a, emissive: 0x963823, emissiveIntensity: 0.25, roughness: 0.86, metalness: 0, opacity: 1, surface: 'panel', minimap: 0x7d3020, pattern: 'plain' },
 
-  // Gameplay volumes that have to read as artificial. This is the one place a
-  // slight glow is right: a barrier you can shoot through has no real-world
-  // referent, so it should look like an overlay rather than a wall.
-  forcefield: { color: 0x9fd0e8, emissive: 0x9fd0e8, emissiveIntensity: 0.5, roughness: 0.2, metalness: 0, opacity: 0.12, surface: 'panel', minimap: 0, pattern: 'grid' },
-  reactor: { color: 0x6f757a, emissive: 0xd9a13c, emissiveIntensity: 0.6, roughness: 0.55, metalness: 0.1, opacity: 1, surface: 'metal', minimap: 0x4a5054, pattern: 'panel' },
-  holo: { color: 0xdfe6ea, emissive: 0xa8c4d4, emissiveIntensity: 0.55, roughness: 0.5, metalness: 0, opacity: 0.4, surface: 'panel', minimap: 0, pattern: 'grid' },
+  // Gameplay volumes that have to read as unnatural. A barrier you can shoot
+  // through has no real-world referent, so it should look like an overlay
+  // rather than a wall.
+  forcefield: { color: 0xa8e6f0, emissive: 0xa8e6f0, emissiveIntensity: 0.5, roughness: 0.2, metalness: 0, opacity: 0.14, surface: 'panel', minimap: 0, pattern: 'grid' },
+  reactor: { color: 0x8a6b4a, emissive: 0xff9a3c, emissiveIntensity: 0.7, roughness: 0.8, metalness: 0, opacity: 1, surface: 'metal', minimap: 0x4a5054, pattern: 'plain' },
+  holo: { color: 0xe8f4ff, emissive: 0xa8d8f0, emissiveIntensity: 0.5, roughness: 0.5, metalness: 0, opacity: 0.4, surface: 'panel', minimap: 0, pattern: 'grid' },
 
-  conveyor: { color: 0x2b2e31, emissive: 0, emissiveIntensity: 0, roughness: 0.96, metalness: 0, opacity: 1, surface: 'rubber', minimap: 0x1e2123, pattern: 'grate' },
-  asphalt: { color: 0x44474a, emissive: 0, emissiveIntensity: 0, roughness: 0.96, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x2c2e30, pattern: 'noise' },
-  sand: { color: 0xc4ae84, emissive: 0, emissiveIntensity: 0, roughness: 0.96, metalness: 0, opacity: 1, surface: 'sand', minimap: 0x8f7f60, pattern: 'noise' },
+  conveyor: { color: 0x6b4f34, emissive: 0, emissiveIntensity: 0, roughness: 0.99, metalness: 0, opacity: 1, surface: 'rubber', minimap: 0x412f1f, pattern: 'noise' },
+  asphalt: { color: 0x8a6a45, emissive: 0, emissiveIntensity: 0, roughness: 0.99, metalness: 0, opacity: 1, surface: 'concrete', minimap: 0x54402a, pattern: 'noise' },
+  sand: { color: 0xe8d3a0, emissive: 0, emissiveIntensity: 0, roughness: 0.97, metalness: 0, opacity: 1, surface: 'sand', minimap: 0x9a8763, pattern: 'noise' },
 };
 
 export function materialOf(key: string): MaterialDef {
