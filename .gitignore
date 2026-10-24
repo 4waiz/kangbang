@@ -20,6 +20,11 @@ data/*.db
 data/*.db-journal
 data/*.sqlite
 packages/server/data/
+# SQLite WAL-mode sidecar files (written next to the database at runtime)
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
 
 # Blender scratch output
 assets/source/*.blend1
